@@ -2,6 +2,10 @@
 
 A self-contained browser prototype for a two-player school-themed boxing game.
 
+## Play now
+
+[Play St. Michael's Boxing](https://zach-veloso.github.io/st-michaels-boxing/)
+
 ## Run it
 
 Open [index.html](/Users/Zach/Documents/New project/St Michael's Project/index.html) in a browser.
