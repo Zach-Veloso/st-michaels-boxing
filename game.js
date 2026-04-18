@@ -167,7 +167,8 @@ const AUDIO = {
   master: null,
   enabled: true,
   menuMusicTimer: null,
-  menuMusicToken: 0
+  menuMusicToken: 0,
+  unlocked: false
 };
 
 function updateSoundToggleUI() {
@@ -184,18 +185,77 @@ function ensureAudio() {
     return null;
   }
 
-  if (!AUDIO.ctx) {
+  if (!AUDIO.ctx || AUDIO.ctx.state === "closed") {
     AUDIO.ctx = new AudioContextClass();
     AUDIO.master = AUDIO.ctx.createGain();
-    AUDIO.master.gain.value = 0.16;
+    AUDIO.master.gain.value = 0.28;
     AUDIO.master.connect(AUDIO.ctx.destination);
+    AUDIO.unlocked = false;
   }
 
-  if (AUDIO.ctx.state === "suspended") {
+  if (AUDIO.ctx.state !== "running") {
     AUDIO.ctx.resume().catch(() => {});
   }
 
   return AUDIO.ctx;
+}
+
+function primeAudioOutput() {
+  if (!AUDIO.ctx || !AUDIO.master || AUDIO.unlocked) {
+    return;
+  }
+
+  const startAt = AUDIO.ctx.currentTime;
+  const osc = AUDIO.ctx.createOscillator();
+  const amp = AUDIO.ctx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(440, startAt);
+  amp.gain.setValueAtTime(0.00001, startAt);
+
+  osc.connect(amp);
+  amp.connect(AUDIO.master);
+  osc.start(startAt);
+  osc.stop(startAt + 0.01);
+
+  AUDIO.unlocked = true;
+}
+
+async function unlockAudioFromGesture() {
+  const ctx = ensureAudio();
+  if (!ctx) {
+    return null;
+  }
+
+  if (ctx.state !== "running") {
+    try {
+      await ctx.resume();
+    } catch {
+      return ctx;
+    }
+  }
+
+  if (ctx.state === "running") {
+    primeAudioOutput();
+  }
+
+  return ctx;
+}
+
+async function requestAudioUnlock() {
+  if (!AUDIO.enabled) {
+    return;
+  }
+
+  const wasReady = Boolean(AUDIO.unlocked && AUDIO.ctx && AUDIO.ctx.state === "running");
+  const ctx = await unlockAudioFromGesture();
+  if (!ctx) {
+    return;
+  }
+
+  if (STATE.currentScreen === "select" && (!wasReady || AUDIO.menuMusicTimer === null)) {
+    syncScreenAudio();
+  }
 }
 
 function playTone({
@@ -338,7 +398,7 @@ function queueMenuMusic(loopToken) {
   leadNotes.forEach((note, index) => {
     playTone({
       ...note,
-      gain: index >= 6 ? 0.016 : 0.014,
+      gain: index >= 6 ? 0.034 : 0.03,
       type: "triangle",
       pan: index % 2 === 0 ? -0.15 : 0.15,
       release: 0.12
@@ -348,7 +408,7 @@ function queueMenuMusic(loopToken) {
   bassNotes.forEach((note, index) => {
     playTone({
       ...note,
-      gain: 0.012,
+      gain: 0.022,
       type: "sine",
       pan: index % 2 === 0 ? -0.08 : 0.08,
       release: 0.16
@@ -378,12 +438,12 @@ function syncScreenAudio() {
   stopMenuMusic();
 }
 
-function toggleSound() {
+async function toggleSound() {
   AUDIO.enabled = !AUDIO.enabled;
   updateSoundToggleUI();
 
   if (AUDIO.enabled) {
-    ensureAudio();
+    await unlockAudioFromGesture();
     playSound("select");
   }
 
@@ -512,8 +572,8 @@ function renderRoster() {
   wirePortraitFrames(roster);
 
   roster.querySelectorAll(".picker-button").forEach((button) => {
-    button.addEventListener("click", () => {
-      ensureAudio();
+    button.addEventListener("click", async () => {
+      await requestAudioUnlock();
       playSound("select");
       const player = button.dataset.player;
       const character = CHARACTERS.find((entry) => entry.id === button.dataset.character);
@@ -1413,15 +1473,33 @@ function init() {
   showScreen("splash");
   updateSoundToggleUI();
 
-  enterButton.addEventListener("click", () => {
-    ensureAudio();
+  enterButton.addEventListener("click", async () => {
+    await requestAudioUnlock();
     playSound("menu-open");
     showScreen("select");
   });
-  startMatchButton.addEventListener("click", beginMatch);
-  rematchButton.addEventListener("click", resetForRematch);
-  backButton.addEventListener("click", backToSelection);
+  startMatchButton.addEventListener("click", async () => {
+    await requestAudioUnlock();
+    beginMatch();
+  });
+  rematchButton.addEventListener("click", async () => {
+    await requestAudioUnlock();
+    resetForRematch();
+  });
+  backButton.addEventListener("click", async () => {
+    await requestAudioUnlock();
+    backToSelection();
+  });
   soundToggleButton.addEventListener("click", toggleSound);
+  window.addEventListener("pointerdown", () => {
+    void requestAudioUnlock();
+  }, { passive: true });
+  window.addEventListener("touchend", () => {
+    void requestAudioUnlock();
+  }, { passive: true });
+  window.addEventListener("keydown", () => {
+    void requestAudioUnlock();
+  });
   window.addEventListener("keydown", handleKeyDown);
   window.addEventListener("keyup", handleKeyUp);
 
