@@ -22,7 +22,7 @@ Then visit `http://localhost:8000`.
 
 - Intro splash with the public St Michael's Prep School logo and school photo backgrounds
 - Character select for two local players
-- Four named St Michael's sports staff fighters with different stats and special abilities
+- Three named St Michael's staff fighters with different stats and special abilities
 - Two-player local controls, health bars, blocking, stun, KO, rematch flow, a 3-minute draw rule, and win tracking
 - School-photo arena backdrop with a softer, less pixel-heavy visual style
 
@@ -34,7 +34,7 @@ Then visit `http://localhost:8000`.
 ## Swapping in teacher photos later
 
 - The current roster names and public role titles are already wired into the `CHARACTERS` array in [game.js](/Users/Zach/Documents/New project/St Michael's Project/game.js).
-- Drop approved JPG photos into [assets/teachers/README.md](/Users/Zach/Documents/New%20project/St%20Michael's%20Project/assets/teachers/README.md) using the filenames `thomas.jpg`, `brightman.jpg`, `denton.jpg`, and `fornasier.jpg`.
+- Drop approved JPG photos into [assets/teachers/README.md](/Users/Zach/Documents/New%20project/St%20Michael's%20Project/assets/teachers/README.md) using the filenames `thomas.jpg`, `brightman.jpg`, and `pears.jpg`.
 - Once those files are in place, the roster, character select, and in-match fighter heads will use the real teacher photos automatically.
 
 ## Asset note

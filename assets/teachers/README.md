@@ -4,8 +4,7 @@ Put the approved teacher photos in this folder with these exact filenames:
 
 - `thomas.jpg`
 - `brightman.jpg`
-- `denton.jpg`
-- `fornasier.jpg`
+- `pears.jpg`
 
 Best results:
 
