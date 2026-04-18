@@ -165,7 +165,9 @@ const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 const AUDIO = {
   ctx: null,
   master: null,
-  enabled: true
+  enabled: true,
+  menuMusicTimer: null,
+  menuMusicToken: 0
 };
 
 function updateSoundToggleUI() {
@@ -301,6 +303,81 @@ function playSound(name) {
   }
 }
 
+function stopMenuMusic() {
+  AUDIO.menuMusicToken += 1;
+
+  if (AUDIO.menuMusicTimer) {
+    window.clearTimeout(AUDIO.menuMusicTimer);
+    AUDIO.menuMusicTimer = null;
+  }
+}
+
+function queueMenuMusic(loopToken) {
+  if (!AUDIO.enabled || STATE.currentScreen !== "select" || AUDIO.menuMusicToken !== loopToken) {
+    return;
+  }
+
+  // Keep the select screen feeling lively without overpowering the action effects.
+  const leadNotes = [
+    { frequency: 392, duration: 0.16, delay: 0.12 },
+    { frequency: 440, duration: 0.16, delay: 0.42 },
+    { frequency: 523.25, duration: 0.2, delay: 0.74 },
+    { frequency: 440, duration: 0.16, delay: 1.1 },
+    { frequency: 392, duration: 0.16, delay: 1.4 },
+    { frequency: 523.25, duration: 0.18, delay: 1.74 },
+    { frequency: 587.33, duration: 0.2, delay: 2.06 },
+    { frequency: 523.25, duration: 0.22, delay: 2.42 }
+  ];
+  const bassNotes = [
+    { frequency: 196, duration: 0.34, delay: 0.12 },
+    { frequency: 220, duration: 0.3, delay: 0.74 },
+    { frequency: 174.61, duration: 0.34, delay: 1.4 },
+    { frequency: 196, duration: 0.38, delay: 2.06 }
+  ];
+
+  leadNotes.forEach((note, index) => {
+    playTone({
+      ...note,
+      gain: index >= 6 ? 0.016 : 0.014,
+      type: "triangle",
+      pan: index % 2 === 0 ? -0.15 : 0.15,
+      release: 0.12
+    });
+  });
+
+  bassNotes.forEach((note, index) => {
+    playTone({
+      ...note,
+      gain: 0.012,
+      type: "sine",
+      pan: index % 2 === 0 ? -0.08 : 0.08,
+      release: 0.16
+    });
+  });
+
+  AUDIO.menuMusicTimer = window.setTimeout(() => {
+    if (AUDIO.menuMusicToken !== loopToken) {
+      return;
+    }
+    queueMenuMusic(loopToken);
+  }, 2900);
+}
+
+function syncScreenAudio() {
+  if (STATE.currentScreen === "select" && AUDIO.enabled) {
+    const ctx = ensureAudio();
+    if (!ctx) {
+      return;
+    }
+
+    stopMenuMusic();
+    queueMenuMusic(AUDIO.menuMusicToken);
+    return;
+  }
+
+  stopMenuMusic();
+}
+
 function toggleSound() {
   AUDIO.enabled = !AUDIO.enabled;
   updateSoundToggleUI();
@@ -309,6 +386,8 @@ function toggleSound() {
     ensureAudio();
     playSound("select");
   }
+
+  syncScreenAudio();
 }
 
 function loadImage(src) {
@@ -403,6 +482,7 @@ function showScreen(target) {
     screen.classList.toggle("active", name === target);
   });
   STATE.currentScreen = target;
+  syncScreenAudio();
 }
 
 function renderRoster() {
