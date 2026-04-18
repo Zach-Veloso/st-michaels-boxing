@@ -46,10 +46,14 @@ button {
 }
 
 .top-banner {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
   padding: 0 10px 18px;
+}
+
+.banner-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
 }
 
 .top-banner h1,
@@ -67,6 +71,24 @@ button {
 .top-banner h1 {
   font-size: clamp(2rem, 4vw, 3.6rem);
   line-height: 1;
+}
+
+.sound-toggle {
+  flex: 0 0 auto;
+  padding: 11px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.74rem;
+}
+
+.sound-toggle[aria-pressed="false"] {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
 }
 
 .eyebrow,
@@ -547,6 +569,10 @@ button {
   .app-shell {
     width: min(100vw - 16px, 1440px);
     padding-top: 10px;
+  }
+
+  .banner-row {
+    flex-direction: column;
   }
 
   .screen-frame,

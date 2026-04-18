@@ -142,6 +142,7 @@ const overlayTitle = document.getElementById("overlay-title");
 const overlayCopy = document.getElementById("overlay-copy");
 const rematchButton = document.getElementById("rematch-button");
 const backButton = document.getElementById("back-button");
+const soundToggleButton = document.getElementById("sound-toggle");
 const hud = {
   player1Name: document.getElementById("player1-name"),
   player2Name: document.getElementById("player2-name"),
@@ -160,6 +161,155 @@ const pressedKeys = new Set();
 let fighters = [];
 let lastTimestamp = 0;
 let loopActive = false;
+const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+const AUDIO = {
+  ctx: null,
+  master: null,
+  enabled: true
+};
+
+function updateSoundToggleUI() {
+  if (!soundToggleButton) {
+    return;
+  }
+
+  soundToggleButton.textContent = AUDIO.enabled ? "Sound: On" : "Sound: Off";
+  soundToggleButton.setAttribute("aria-pressed", String(AUDIO.enabled));
+}
+
+function ensureAudio() {
+  if (!AudioContextClass) {
+    return null;
+  }
+
+  if (!AUDIO.ctx) {
+    AUDIO.ctx = new AudioContextClass();
+    AUDIO.master = AUDIO.ctx.createGain();
+    AUDIO.master.gain.value = 0.16;
+    AUDIO.master.connect(AUDIO.ctx.destination);
+  }
+
+  if (AUDIO.ctx.state === "suspended") {
+    AUDIO.ctx.resume().catch(() => {});
+  }
+
+  return AUDIO.ctx;
+}
+
+function playTone({
+  frequency,
+  frequencyEnd = frequency,
+  duration = 0.1,
+  gain = 0.04,
+  type = "square",
+  attack = 0.004,
+  release = 0.08,
+  delay = 0,
+  pan = 0
+}) {
+  const ctx = ensureAudio();
+  if (!ctx || !AUDIO.enabled) {
+    return;
+  }
+
+  const startAt = ctx.currentTime + delay;
+  const osc = ctx.createOscillator();
+  const amp = ctx.createGain();
+  const hasStereo = typeof ctx.createStereoPanner === "function";
+  const panner = hasStereo ? ctx.createStereoPanner() : null;
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(Math.max(1, frequency), startAt);
+  if (frequencyEnd !== frequency) {
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1, frequencyEnd), startAt + duration);
+  }
+
+  amp.gain.setValueAtTime(0.0001, startAt);
+  amp.gain.linearRampToValueAtTime(gain, startAt + attack);
+  amp.gain.exponentialRampToValueAtTime(0.0001, startAt + Math.max(attack + 0.02, duration + release));
+
+  if (panner) {
+    panner.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), startAt);
+    osc.connect(amp);
+    amp.connect(panner);
+    panner.connect(AUDIO.master);
+  } else {
+    osc.connect(amp);
+    amp.connect(AUDIO.master);
+  }
+
+  osc.start(startAt);
+  osc.stop(startAt + duration + release + 0.04);
+}
+
+function playSound(name) {
+  if (!AUDIO.enabled) {
+    return;
+  }
+
+  switch (name) {
+    case "menu-open":
+      playTone({ frequency: 520, frequencyEnd: 760, duration: 0.11, gain: 0.035, type: "triangle" });
+      playTone({ frequency: 860, duration: 0.06, gain: 0.02, type: "sine", delay: 0.03 });
+      break;
+    case "select":
+      playTone({ frequency: 420, frequencyEnd: 540, duration: 0.07, gain: 0.03, type: "triangle" });
+      playTone({ frequency: 680, duration: 0.06, gain: 0.02, type: "sine", delay: 0.04 });
+      break;
+    case "back":
+      playTone({ frequency: 440, frequencyEnd: 260, duration: 0.11, gain: 0.03, type: "triangle" });
+      break;
+    case "bell":
+      playTone({ frequency: 900, duration: 0.18, gain: 0.04, type: "sine" });
+      playTone({ frequency: 1350, duration: 0.26, gain: 0.03, type: "sine", delay: 0.02 });
+      playTone({ frequency: 630, duration: 0.24, gain: 0.025, type: "triangle", delay: 0.01 });
+      break;
+    case "jab":
+      playTone({ frequency: 260, frequencyEnd: 150, duration: 0.045, gain: 0.024, type: "square" });
+      break;
+    case "hook":
+      playTone({ frequency: 210, frequencyEnd: 110, duration: 0.08, gain: 0.04, type: "square" });
+      break;
+    case "special":
+      playTone({ frequency: 380, frequencyEnd: 180, duration: 0.14, gain: 0.04, type: "sawtooth" });
+      playTone({ frequency: 720, duration: 0.08, gain: 0.022, type: "triangle", delay: 0.03 });
+      break;
+    case "shield":
+      playTone({ frequency: 310, duration: 0.18, gain: 0.028, type: "triangle" });
+      playTone({ frequency: 520, frequencyEnd: 760, duration: 0.22, gain: 0.024, type: "sine", delay: 0.02 });
+      break;
+    case "hit":
+      playTone({ frequency: 180, frequencyEnd: 75, duration: 0.07, gain: 0.04, type: "triangle" });
+      break;
+    case "heavy-hit":
+      playTone({ frequency: 140, frequencyEnd: 48, duration: 0.14, gain: 0.065, type: "square" });
+      break;
+    case "block":
+      playTone({ frequency: 920, frequencyEnd: 510, duration: 0.04, gain: 0.022, type: "square" });
+      playTone({ frequency: 260, duration: 0.05, gain: 0.016, type: "triangle", delay: 0.01 });
+      break;
+    case "ko":
+      playTone({ frequency: 260, frequencyEnd: 60, duration: 0.42, gain: 0.07, type: "sawtooth" });
+      playTone({ frequency: 980, duration: 0.18, gain: 0.028, type: "sine", delay: 0.06 });
+      break;
+    case "draw":
+      playTone({ frequency: 620, duration: 0.16, gain: 0.03, type: "triangle" });
+      playTone({ frequency: 470, duration: 0.22, gain: 0.025, type: "triangle", delay: 0.12 });
+      break;
+    default:
+      break;
+  }
+}
+
+function toggleSound() {
+  AUDIO.enabled = !AUDIO.enabled;
+  updateSoundToggleUI();
+
+  if (AUDIO.enabled) {
+    ensureAudio();
+    playSound("select");
+  }
+}
 
 function loadImage(src) {
   const image = new Image();
@@ -283,6 +433,8 @@ function renderRoster() {
 
   roster.querySelectorAll(".picker-button").forEach((button) => {
     button.addEventListener("click", () => {
+      ensureAudio();
+      playSound("select");
       const player = button.dataset.player;
       const character = CHARACTERS.find((entry) => entry.id === button.dataset.character);
       STATE.selections[player] = character;
@@ -382,6 +534,7 @@ function beginMatch() {
   updateHud();
   overlay.classList.add("hidden");
   showScreen("match");
+  playSound("bell");
   if (!loopActive) {
     loopActive = true;
     requestAnimationFrame(gameLoop);
@@ -399,6 +552,7 @@ function backToSelection() {
   overlay.classList.add("hidden");
   showScreen("select");
   updateSelectionUI();
+  playSound("back");
 }
 
 function updateHud() {
@@ -484,6 +638,10 @@ function attemptAttack(fighter, opponent, type) {
     fighter.specialCooldown = fighter.character.specialCooldown;
   }
 
+  if (!(type === "special" && attack.selfBuff === "shield")) {
+    playSound(type === "special" ? "special" : type);
+  }
+
   if (attack.selfBuff === "dash") {
     fighter.speedBuffTimer = 0.9;
     fighter.vx = fighter.facing * 620;
@@ -494,6 +652,7 @@ function attemptAttack(fighter, opponent, type) {
     fighter.shieldTimer = 2.2;
     fighter.health = Math.min(fighter.character.maxHealth, fighter.health + 8);
     setMessage(`${fighter.character.name} activates ${fighter.character.abilityName}!`);
+    playSound("shield");
     return;
   }
 
@@ -591,6 +750,12 @@ function tryHit(attacker, defender) {
   defender.vx += attacker.facing * push;
   defender.hitFlash = 0.16;
 
+  if (defender.isBlocking) {
+    playSound("block");
+  } else {
+    playSound(damage >= 10 || stun >= 0.4 ? "heavy-hit" : "hit");
+  }
+
   if (!defender.isBlocking) {
     defender.stunTimer = Math.max(defender.stunTimer, stun);
   }
@@ -683,6 +848,7 @@ function checkWinner() {
     overlayTitle.textContent = `${winner.character.name} wins by KO`;
     overlayCopy.textContent = `${winner.character.abilityName} shook the whole schoolyard.`;
     setMessage("KO!");
+    playSound("ko");
     updateHud();
     overlay.classList.remove("hidden");
   }
@@ -700,6 +866,7 @@ function checkDraw() {
     overlayTitle.textContent = "Draw";
     overlayCopy.textContent = "Three minutes are up. The bell saves both fighters.";
     setMessage("Draw! Time is up.");
+    playSound("draw");
     updateHud();
     overlay.classList.remove("hidden");
   }
@@ -1126,6 +1293,7 @@ function handleKeyDown(event) {
 
   if (isGameplayKey(key)) {
     event.preventDefault();
+    ensureAudio();
   }
 
   pressedKeys.add(key);
@@ -1163,11 +1331,17 @@ function init() {
   renderRoster();
   updateSelectionUI();
   showScreen("splash");
+  updateSoundToggleUI();
 
-  enterButton.addEventListener("click", () => showScreen("select"));
+  enterButton.addEventListener("click", () => {
+    ensureAudio();
+    playSound("menu-open");
+    showScreen("select");
+  });
   startMatchButton.addEventListener("click", beginMatch);
   rematchButton.addEventListener("click", resetForRematch);
   backButton.addEventListener("click", backToSelection);
+  soundToggleButton.addEventListener("click", toggleSound);
   window.addEventListener("keydown", handleKeyDown);
   window.addEventListener("keyup", handleKeyUp);
 
