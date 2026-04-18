@@ -281,6 +281,41 @@ button {
   box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.15);
 }
 
+.preview-badge,
+.portrait {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.portrait-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.portrait-fallback {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  transition: opacity 140ms ease;
+}
+
+.photo-frame.photo-ready .portrait-photo {
+  opacity: 1;
+}
+
+.photo-frame.photo-ready .portrait-fallback {
+  opacity: 0;
+}
+
 .player-preview .preview-name {
   margin: 0 0 8px;
   font-size: 1.15rem;

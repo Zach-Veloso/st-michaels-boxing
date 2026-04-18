@@ -34,7 +34,8 @@ Then visit `http://localhost:8000`.
 ## Swapping in teacher photos later
 
 - The current roster names and public role titles are already wired into the `CHARACTERS` array in [game.js](/Users/Zach/Documents/New project/St Michael's Project/game.js).
-- If you get approved teacher photos, we can add proper portraits and character intro cards next, and tune the fighter art to match them more closely.
+- Drop approved JPG photos into [assets/teachers/README.md](/Users/Zach/Documents/New%20project/St%20Michael's%20Project/assets/teachers/README.md) using the filenames `thomas.jpg`, `brightman.jpg`, `denton.jpg`, and `fornasier.jpg`.
+- Once those files are in place, the roster, character select, and in-match fighter heads will use the real teacher photos automatically.
 
 ## Asset note
 

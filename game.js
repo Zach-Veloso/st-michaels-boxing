@@ -2,6 +2,7 @@ const CHARACTERS = [
   {
     id: "thomas",
     name: "Mr Thomas",
+    photoFile: "thomas.jpg",
     title: "Head of Boys' Games",
     style: "Quick-footed pressure fighter who keeps the pace high.",
     abilityName: "Touchline Charge",
@@ -26,6 +27,7 @@ const CHARACTERS = [
   {
     id: "brightman",
     name: "Mr Brightman",
+    photoFile: "brightman.jpg",
     title: "Director of Sport",
     style: "Power-first boxer who punishes openings with big shots.",
     abilityName: "Sports Hall Smash",
@@ -50,6 +52,7 @@ const CHARACTERS = [
   {
     id: "denton",
     name: "Mrs Denton",
+    photoFile: "denton.jpg",
     title: "Head of Girls' Games",
     style: "Technical boxer with a sharp guard and calm ring control.",
     abilityName: "Captain's Guard",
@@ -74,6 +77,7 @@ const CHARACTERS = [
   {
     id: "fornasier",
     name: "Mrs Fornasier",
+    photoFile: "fornasier.jpg",
     title: "Swim Coach & Manager",
     style: "Fast combo specialist with flowing movement and sharp counters.",
     abilityName: "Lane Surge",
@@ -140,6 +144,10 @@ const PHOTO_BACKDROPS = {
   schoolExterior: loadImage("./assets/st-michaels-building.jpg")
 };
 
+const TEACHER_PORTRAITS = Object.fromEntries(
+  CHARACTERS.map((character) => [character.id, loadImage(`./assets/teachers/${character.photoFile}`)])
+);
+
 const screens = {
   splash: document.getElementById("splash-screen"),
   select: document.getElementById("select-screen"),
@@ -198,6 +206,52 @@ function drawCoverImage(image, x, y, width, height, focusX = 0.5, focusY = 0.5) 
   return true;
 }
 
+function hasLoadedImage(image) {
+  return Boolean(image && image.complete && image.naturalWidth);
+}
+
+function getInitials(name) {
+  return name.split(" ").map((part) => part[0]).join("");
+}
+
+function getTeacherPhoto(character) {
+  return TEACHER_PORTRAITS[character.id];
+}
+
+function getTeacherPhotoPath(character) {
+  return `./assets/teachers/${character.photoFile}`;
+}
+
+function buildPortraitMarkup(character, className) {
+  return `
+    <div class="${className} photo-frame" style="background:${character.color}; box-shadow: inset 0 0 0 3px rgba(255,255,255,0.16);">
+      <img class="portrait-photo" src="${getTeacherPhotoPath(character)}" alt="${character.name} portrait" />
+      <span class="portrait-fallback">${getInitials(character.name)}</span>
+    </div>
+  `;
+}
+
+function wirePortraitFrames(root) {
+  root.querySelectorAll(".photo-frame").forEach((frame) => {
+    const image = frame.querySelector(".portrait-photo");
+    if (!image) {
+      return;
+    }
+
+    const syncState = () => {
+      frame.classList.toggle("photo-ready", image.complete && image.naturalWidth > 0);
+    };
+
+    if (image.complete) {
+      syncState();
+      return;
+    }
+
+    image.addEventListener("load", syncState, { once: true });
+    image.addEventListener("error", syncState, { once: true });
+  });
+}
+
 function isPressed(binding) {
   return binding.some((key) => pressedKeys.has(key));
 }
@@ -234,9 +288,7 @@ function renderRoster() {
     card.className = "fighter-card";
     card.innerHTML = `
       <div class="card-top">
-        <div class="portrait" style="background:${character.color}; box-shadow: inset 0 0 0 3px rgba(255,255,255,0.16);">
-          ${character.name.split(" ").map((part) => part[0]).join("")}
-        </div>
+        ${buildPortraitMarkup(character, "portrait")}
         <div>
           <p class="eyebrow">${character.title}</p>
           <h3>${character.name}</h3>
@@ -251,6 +303,8 @@ function renderRoster() {
     `;
     roster.appendChild(card);
   });
+
+  wirePortraitFrames(roster);
 
   roster.querySelectorAll(".picker-button").forEach((button) => {
     button.addEventListener("click", () => {
@@ -272,14 +326,13 @@ function renderPreview(container, character) {
   container.className = "player-preview";
   container.innerHTML = `
     <div>
-      <div class="preview-badge" style="background:${character.color};">
-        ${character.name.split(" ").map((part) => part[0]).join("")}
-      </div>
+      ${buildPortraitMarkup(character, "preview-badge")}
       <p class="preview-name">${character.name}</p>
       <p class="preview-style">${character.style}</p>
       <p class="preview-ability"><strong>${character.abilityName}:</strong> ${character.abilityText}</p>
     </div>
   `;
+  wirePortraitFrames(container);
 }
 
 function updateSelectionUI() {
@@ -809,6 +862,27 @@ function drawHair(headX, headY, appearance) {
   ctx.fill();
 }
 
+function drawTeacherHeadPhoto(headX, headY, character) {
+  const portrait = getTeacherPhoto(character);
+  if (!hasLoadedImage(portrait)) {
+    return false;
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(headX, headY + 6, 22, 26, 0, 0, Math.PI * 2);
+  ctx.clip();
+  drawCoverImage(portrait, headX - 24, headY - 24, 48, 60, 0.5, 0.24);
+  ctx.restore();
+
+  ctx.strokeStyle = "rgba(19, 34, 53, 0.72)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(headX, headY + 6, 22, 26, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  return true;
+}
+
 function drawFighter(fighter) {
   const appearance = fighter.character;
   const build = appearance.build || 1;
@@ -948,50 +1022,52 @@ function drawFighter(fighter) {
   ctx.lineTo(frontHandX, frontHandY);
   ctx.stroke();
 
-  ctx.fillStyle = skinTone;
-  ctx.beginPath();
-  ctx.ellipse(headX, headY + 6, 22, 26, 0, 0, Math.PI * 2);
-  ctx.fill();
+  if (!drawTeacherHeadPhoto(headX, headY, appearance)) {
+    ctx.fillStyle = skinTone;
+    ctx.beginPath();
+    ctx.ellipse(headX, headY + 6, 22, 26, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-  ctx.beginPath();
-  ctx.arc(headX - fighter.facing * 21, headY + 6, 4, 0, Math.PI * 2);
-  ctx.arc(headX + fighter.facing * 19, headY + 7, 3, 0, Math.PI * 2);
-  ctx.fill();
+    ctx.beginPath();
+    ctx.arc(headX - fighter.facing * 21, headY + 6, 4, 0, Math.PI * 2);
+    ctx.arc(headX + fighter.facing * 19, headY + 7, 3, 0, Math.PI * 2);
+    ctx.fill();
 
-  ctx.fillStyle = "rgba(255,255,255,0.16)";
-  ctx.beginPath();
-  ctx.ellipse(headX - fighter.facing * 8, headY - 4, 7, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.16)";
+    ctx.beginPath();
+    ctx.ellipse(headX - fighter.facing * 8, headY - 4, 7, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-  drawHair(headX, headY, appearance);
+    drawHair(headX, headY, appearance);
 
-  ctx.strokeStyle = "#241a18";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(headX - fighter.facing * 10, headY + 3);
-  ctx.lineTo(headX - fighter.facing * 3, headY + 2);
-  ctx.moveTo(headX + fighter.facing * 3, headY + 2);
-  ctx.lineTo(headX + fighter.facing * 10, headY + 3);
-  ctx.stroke();
+    ctx.strokeStyle = "#241a18";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(headX - fighter.facing * 10, headY + 3);
+    ctx.lineTo(headX - fighter.facing * 3, headY + 2);
+    ctx.moveTo(headX + fighter.facing * 3, headY + 2);
+    ctx.lineTo(headX + fighter.facing * 10, headY + 3);
+    ctx.stroke();
 
-  ctx.fillStyle = "#241a18";
-  ctx.beginPath();
-  ctx.arc(headX - fighter.facing * 7, headY + 7, 2, 0, Math.PI * 2);
-  ctx.arc(headX + fighter.facing * 7, headY + 7, 2, 0, Math.PI * 2);
-  ctx.fill();
+    ctx.fillStyle = "#241a18";
+    ctx.beginPath();
+    ctx.arc(headX - fighter.facing * 7, headY + 7, 2, 0, Math.PI * 2);
+    ctx.arc(headX + fighter.facing * 7, headY + 7, 2, 0, Math.PI * 2);
+    ctx.fill();
 
-  ctx.strokeStyle = "#8e6856";
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  ctx.moveTo(headX + fighter.facing * 1, headY + 10);
-  ctx.lineTo(headX + fighter.facing * 4, headY + 15);
-  ctx.stroke();
+    ctx.strokeStyle = "#8e6856";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(headX + fighter.facing * 1, headY + 10);
+    ctx.lineTo(headX + fighter.facing * 4, headY + 15);
+    ctx.stroke();
 
-  ctx.strokeStyle = "#6f3f3d";
-  ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  ctx.arc(headX, headY + 18, 7, 0.25, Math.PI - 0.25);
-  ctx.stroke();
+    ctx.strokeStyle = "#6f3f3d";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(headX, headY + 18, 7, 0.25, Math.PI - 0.25);
+    ctx.stroke();
+  }
 
   drawGlove(rearHandX, rearHandY, trimColor, fighter.facing * -0.2, 0.92);
   drawGlove(frontHandX, frontHandY, trimColor, fighter.facing * 0.08, fighter.currentAttack ? 1.08 : 1);
