@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>St. Michael's Boxing</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="top-banner">
+      <p class="eyebrow">Cauliflower Cheese Games</p>
+      <h1>St. Michael's Boxing</h1>
+      <p class="subhead">Two-player retro schoolyard showdown</p>
+    </header>
+
+    <main class="screen-frame">
+      <section id="splash-screen" class="screen active">
+        <div class="splash-card">
+          <img
+            class="badge"
+            src="./assets/st-michaels-logo.svg"
+            alt="St Michael's Prep School logo"
+          />
+          <p class="splash-kicker">St. Michael's Prep School</p>
+          <h2>Cauliflower Cheese Games presents</h2>
+          <h3>St. Michael's Boxing</h3>
+          <p class="splash-copy">
+            Local multiplayer. Pick a teacher. Step into the ring. Ring the bell.
+          </p>
+          <button id="enter-button" class="primary-button">Enter the Hall</button>
+        </div>
+      </section>
+
+      <section id="select-screen" class="screen">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Character Select</p>
+            <h2>Choose the teachers</h2>
+          </div>
+          <button id="start-match-button" class="primary-button" disabled>Start Match</button>
+        </div>
+
+        <div class="selection-layout">
+          <aside class="selection-panel">
+            <h3>Player 1</h3>
+            <div id="player1-preview" class="player-preview empty">
+              <p>Choose a teacher</p>
+            </div>
+            <p class="controls-label">Controls</p>
+            <p class="controls-copy">Move `A/D`, Jump `W`, Jab `F`, Hook `G`, Block `S`, Special `H`</p>
+          </aside>
+
+          <section id="roster" class="roster-grid" aria-label="Teacher roster"></section>
+
+          <aside class="selection-panel">
+            <h3>Player 2</h3>
+            <div id="player2-preview" class="player-preview empty">
+              <p>Choose a teacher</p>
+            </div>
+            <p class="controls-label">Controls</p>
+            <p class="controls-copy">Move `J/L` or `Arrow Left/Right`, Jump `I` or `Arrow Up`, Jab `N`, Hook `M`, Block `K` or `Arrow Down`, Special `U`</p>
+          </aside>
+        </div>
+
+        <div class="selection-footer">
+          <p>
+            The official school logo is now in the prototype, and the backgrounds avoid showing students or teachers.
+            The roster now uses Mr Thomas, Mr Brightman, Mrs Denton, and Mrs Fornasier. Portraits are still stylised placeholders until you send approved staff photos.
+          </p>
+        </div>
+      </section>
+
+      <section id="match-screen" class="screen">
+        <div class="hud">
+          <div class="hud-column left">
+            <p id="player1-name" class="hud-name">Player 1</p>
+            <div class="meter">
+              <div id="player1-health" class="meter-fill health"></div>
+            </div>
+            <p id="player1-special" class="meter-label">Special ready</p>
+            <p id="player1-score" class="score-label">Wins: 0</p>
+          </div>
+
+          <div class="hud-center">
+            <p class="eyebrow">Assembly Hall Arena</p>
+            <h2 id="round-label">Round 1</h2>
+            <p id="timer-label" class="timer-label">Time 0:00 / 3:00</p>
+            <p id="message-banner" class="message-banner">Touch gloves and get ready.</p>
+          </div>
+
+          <div class="hud-column right">
+            <p id="player2-name" class="hud-name">Player 2</p>
+            <div class="meter">
+              <div id="player2-health" class="meter-fill health"></div>
+            </div>
+            <p id="player2-special" class="meter-label">Special ready</p>
+            <p id="player2-score" class="score-label">Wins: 0</p>
+          </div>
+        </div>
+
+        <div class="arena-shell">
+          <canvas id="game-canvas" width="1280" height="720" aria-label="St. Michael's Boxing arena"></canvas>
+          <div id="match-overlay" class="match-overlay hidden">
+            <div class="overlay-card">
+              <p class="eyebrow">Result</p>
+              <h3 id="overlay-title">KO!</h3>
+              <p id="overlay-copy">A new champion walks through the school gates.</p>
+              <div class="overlay-actions">
+                <button id="rematch-button" class="primary-button">Rematch</button>
+                <button id="back-button" class="secondary-button">Back to Select</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-strip">
+          <div class="tip-card">
+            <h3>Player 1 Controls</h3>
+            <p>`A` / `D` move, `W` jump, `S` block, `F` jab, `G` hook, `H` special.</p>
+          </div>
+          <div class="tip-card">
+            <h3>Player 2 Controls</h3>
+            <p>`J` / `L` or arrow keys move, `I` jump, `K` block, `N` jab, `M` hook, `U` special.</p>
+          </div>
+          <div class="tip-card">
+            <h3>Round Rules</h3>
+            <p>KO wins instantly. If the round clock reaches `3:00`, the result is an automatic draw.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
