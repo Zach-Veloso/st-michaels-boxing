@@ -395,6 +395,53 @@ button {
   gap: 12px;
 }
 
+.difficulty-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px 28px 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 58%),
+    var(--panel-soft);
+  box-shadow: var(--shadow);
+}
+
+.difficulty-panel[hidden] {
+  display: none;
+}
+
+.difficulty-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.difficulty-button {
+  min-width: 112px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: transform 160ms ease, filter 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.difficulty-button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+
+.difficulty-button.active {
+  background: linear-gradient(135deg, rgba(242, 193, 78, 0.95), rgba(255, 216, 128, 0.95));
+  color: #171109;
+}
+
 .selection-panel,
 .mode-card,
 .tip-card,
@@ -1031,9 +1078,15 @@ button {
   }
 
   .section-actions,
+  .difficulty-panel,
   .mode-grid,
   .roster-grid {
     grid-template-columns: 1fr;
+  }
+
+  .difficulty-panel {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .card-actions,

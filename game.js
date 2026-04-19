@@ -133,9 +133,85 @@ const MODE_SLOTS = {
   3: ["player1", "player2", "player3"]
 };
 
+const AI_DIFFICULTIES = {
+  easy: {
+    label: "Easy",
+    moveMultiplier: 0.78,
+    damageMultiplier: 0.58,
+    receivedDamageMultiplier: 1.42,
+    blockChance: 0.28,
+    lowHealthThreshold: 0.45,
+    pressureRange: 24,
+    pressureWindow: 0.56,
+    retreatDistance: 195,
+    approachDistance: 188,
+    closeRetreatChance: 0.06,
+    jumpChance: 0.04,
+    jumpCooldown: 1.35,
+    jumpMinDistance: 124,
+    closeAttackDistance: 104,
+    specialRollMin: 0.97,
+    hookRollMin: 0.82,
+    jabRollMin: 0.46,
+    rangedSpecialChance: 0.05,
+    decisionBase: 0.62,
+    decisionVariance: 0.32,
+    stunMultiplier: 0.66
+  },
+  medium: {
+    label: "Medium",
+    moveMultiplier: 0.9,
+    damageMultiplier: 0.74,
+    receivedDamageMultiplier: 1.24,
+    blockChance: 0.52,
+    lowHealthThreshold: 0.34,
+    pressureRange: 36,
+    pressureWindow: 0.64,
+    retreatDistance: 170,
+    approachDistance: 176,
+    closeRetreatChance: 0.14,
+    jumpChance: 0.09,
+    jumpCooldown: 1.15,
+    jumpMinDistance: 112,
+    closeAttackDistance: 118,
+    specialRollMin: 0.9,
+    hookRollMin: 0.64,
+    jabRollMin: 0.24,
+    rangedSpecialChance: 0.14,
+    decisionBase: 0.42,
+    decisionVariance: 0.26,
+    stunMultiplier: 0.82
+  },
+  hard: {
+    label: "Hard",
+    moveMultiplier: 1.02,
+    damageMultiplier: 0.92,
+    receivedDamageMultiplier: 1.06,
+    blockChance: 0.72,
+    lowHealthThreshold: 0.28,
+    pressureRange: 52,
+    pressureWindow: 0.76,
+    retreatDistance: 145,
+    approachDistance: 158,
+    closeRetreatChance: 0.18,
+    jumpChance: 0.14,
+    jumpCooldown: 0.92,
+    jumpMinDistance: 96,
+    closeAttackDistance: 132,
+    specialRollMin: 0.78,
+    hookRollMin: 0.44,
+    jabRollMin: 0.12,
+    rangedSpecialChance: 0.24,
+    decisionBase: 0.24,
+    decisionVariance: 0.18,
+    stunMultiplier: 0.94
+  }
+};
+
 const STATE = {
   currentScreen: "splash",
   playerCount: null,
+  aiDifficulty: null,
   selections: {
     player1: null,
     player2: null,
@@ -172,6 +248,8 @@ const screens = {
 const roster = document.getElementById("roster");
 const selectionPlayers = document.getElementById("selection-players");
 const selectSubtitle = document.getElementById("select-subtitle");
+const difficultyPanel = document.getElementById("difficulty-panel");
+const difficultyButtons = [...document.querySelectorAll(".difficulty-button")];
 const startMatchButton = document.getElementById("start-match-button");
 const changeModeButton = document.getElementById("change-mode-button");
 const enterButton = document.getElementById("enter-button");
@@ -575,6 +653,10 @@ function isAISlot(slotId) {
   return STATE.playerCount === 1 && slotId === "player2";
 }
 
+function getAIDifficultyProfile() {
+  return AI_DIFFICULTIES[STATE.aiDifficulty] || AI_DIFFICULTIES.medium;
+}
+
 function getSlotMeta(slotId) {
   const base = PLAYER_SLOTS[slotId];
   if (!base) {
@@ -582,16 +664,28 @@ function getSlotMeta(slotId) {
   }
 
   if (isAISlot(slotId)) {
+    const aiProfile = getAIDifficultyProfile();
     return {
       ...base,
       label: "Computer",
       shortLabel: "AI",
       buttonClass: "ai",
-      controls: "AI controlled opponent. It advances, blocks, and throws specials when it sees an opening."
+      controls: `${aiProfile.label} difficulty. AI controlled opponent that advances, blocks, and throws specials when it sees an opening.`
     };
   }
 
   return { ...base };
+}
+
+function updateDifficultyUI() {
+  const showDifficulty = STATE.playerCount === 1;
+  if (difficultyPanel) {
+    difficultyPanel.hidden = !showDifficulty;
+  }
+
+  difficultyButtons.forEach((button) => {
+    button.classList.toggle("active", showDifficulty && button.dataset.difficulty === STATE.aiDifficulty);
+  });
 }
 
 function resetSelections() {
@@ -645,7 +739,7 @@ function renderSelectionPanels() {
 
 function getSelectionSubtitle() {
   if (STATE.playerCount === 1) {
-    return "Pick your fighter first, then choose which teacher the computer will control.";
+    return "Pick your fighter, choose the AI difficulty, then choose which teacher the computer will control.";
   }
 
   if (STATE.playerCount === 2) {
@@ -730,6 +824,7 @@ function renderControlCards() {
 
 function updateSelectionUI() {
   const slotIds = getRequiredSlotIds();
+  updateDifficultyUI();
   if (!slotIds.length) {
     selectionPlayers.innerHTML = "";
     roster.innerHTML = "";
@@ -815,6 +910,7 @@ function setMessage(text) {
 
 function setPlayerCount(count) {
   STATE.playerCount = count;
+  STATE.aiDifficulty = count === 1 ? "medium" : null;
   STATE.round = 1;
   STATE.roundTimeElapsed = 0;
   STATE.inMatch = false;
@@ -839,13 +935,33 @@ function getSpawnPositions(count) {
 }
 
 function createFighter(character, slotId, startX) {
+  const aiProfile = isAISlot(slotId) ? getAIDifficultyProfile() : null;
   return {
     character,
     slotId,
     isAI: isAISlot(slotId),
-    aiMoveMultiplier: isAISlot(slotId) ? 0.9 : 1,
-    aiDamageMultiplier: isAISlot(slotId) ? 0.74 : 1,
-    aiReceivedDamageMultiplier: isAISlot(slotId) ? 1.24 : 1,
+    aiDifficulty: aiProfile ? aiProfile.label : null,
+    aiMoveMultiplier: aiProfile ? aiProfile.moveMultiplier : 1,
+    aiDamageMultiplier: aiProfile ? aiProfile.damageMultiplier : 1,
+    aiReceivedDamageMultiplier: aiProfile ? aiProfile.receivedDamageMultiplier : 1,
+    aiBlockChance: aiProfile ? aiProfile.blockChance : 0,
+    aiLowHealthThreshold: aiProfile ? aiProfile.lowHealthThreshold : 0,
+    aiPressureRange: aiProfile ? aiProfile.pressureRange : 0,
+    aiPressureWindow: aiProfile ? aiProfile.pressureWindow : 0,
+    aiRetreatDistance: aiProfile ? aiProfile.retreatDistance : 0,
+    aiApproachDistance: aiProfile ? aiProfile.approachDistance : 0,
+    aiCloseRetreatChance: aiProfile ? aiProfile.closeRetreatChance : 0,
+    aiJumpChance: aiProfile ? aiProfile.jumpChance : 0,
+    aiJumpCooldownValue: aiProfile ? aiProfile.jumpCooldown : 0,
+    aiJumpMinDistance: aiProfile ? aiProfile.jumpMinDistance : 0,
+    aiAttackDistance: aiProfile ? aiProfile.closeAttackDistance : 0,
+    aiSpecialRollMin: aiProfile ? aiProfile.specialRollMin : 1,
+    aiHookRollMin: aiProfile ? aiProfile.hookRollMin : 1,
+    aiJabRollMin: aiProfile ? aiProfile.jabRollMin : 1,
+    aiRangedSpecialChance: aiProfile ? aiProfile.rangedSpecialChance : 0,
+    aiDecisionBase: aiProfile ? aiProfile.decisionBase : 0,
+    aiDecisionVariance: aiProfile ? aiProfile.decisionVariance : 0,
+    aiStunMultiplier: aiProfile ? aiProfile.stunMultiplier : 1,
     x: startX,
     y: 545,
     width: 88,
@@ -1001,27 +1117,30 @@ function getAIInputState(fighter, delta) {
 
   const diff = getFighterCenter(target) - getFighterCenter(fighter);
   const distance = Math.abs(diff);
-  const lowHealth = fighter.health < fighter.character.maxHealth * 0.34;
-  const underPressure = target.currentAttack && distance < target.currentAttack.range + 36 && target.attackTimer <= target.currentAttack.duration * 0.64;
+  const lowHealth = fighter.health < fighter.character.maxHealth * fighter.aiLowHealthThreshold;
+  const underPressure =
+    target.currentAttack &&
+    distance < target.currentAttack.range + fighter.aiPressureRange &&
+    target.attackTimer <= target.currentAttack.duration * fighter.aiPressureWindow;
 
-  if (underPressure && Math.random() < 0.52) {
+  if (underPressure && Math.random() < fighter.aiBlockChance) {
     input.block = true;
   }
 
   if (fighter.attackTimer <= 0 && fighter.stunTimer <= 0) {
-    if (lowHealth && distance < 170) {
+    if (lowHealth && distance < fighter.aiRetreatDistance) {
       if (diff < 0) {
         input.right = true;
       } else {
         input.left = true;
       }
-    } else if (distance > 176) {
+    } else if (distance > fighter.aiApproachDistance) {
       if (diff < 0) {
         input.left = true;
       } else {
         input.right = true;
       }
-    } else if (distance < 74 && Math.random() < 0.14) {
+    } else if (distance < 74 && Math.random() < fighter.aiCloseRetreatChance) {
       if (diff < 0) {
         input.right = true;
       } else {
@@ -1030,25 +1149,32 @@ function getAIInputState(fighter, delta) {
     }
   }
 
-  if (fighter.onGround && fighter.aiJumpCooldown <= 0 && !input.block && distance > 112 && !target.onGround && Math.random() < 0.09) {
+  if (
+    fighter.onGround &&
+    fighter.aiJumpCooldown <= 0 &&
+    !input.block &&
+    distance > fighter.aiJumpMinDistance &&
+    !target.onGround &&
+    Math.random() < fighter.aiJumpChance
+  ) {
     input.jump = true;
-    fighter.aiJumpCooldown = 1.15;
+    fighter.aiJumpCooldown = fighter.aiJumpCooldownValue;
   }
 
   if (fighter.aiDecisionTimer <= 0 && fighter.attackCooldown <= 0 && fighter.stunTimer <= 0 && !input.block) {
-    if (distance <= 118) {
+    if (distance <= fighter.aiAttackDistance) {
       const roll = Math.random();
-      if (fighter.specialCooldown <= 0 && roll > 0.9) {
+      if (fighter.specialCooldown <= 0 && roll > fighter.aiSpecialRollMin) {
         attemptAttack(fighter, "special");
-      } else if (roll > 0.64) {
+      } else if (roll > fighter.aiHookRollMin) {
         attemptAttack(fighter, "hook");
-      } else if (roll > 0.24) {
+      } else if (roll > fighter.aiJabRollMin) {
         attemptAttack(fighter, "jab");
       }
-      fighter.aiDecisionTimer = 0.42 + Math.random() * 0.26;
-    } else if (distance <= 168 && fighter.specialCooldown <= 0 && Math.random() < 0.14) {
+      fighter.aiDecisionTimer = fighter.aiDecisionBase + Math.random() * fighter.aiDecisionVariance;
+    } else if (distance <= 168 && fighter.specialCooldown <= 0 && Math.random() < fighter.aiRangedSpecialChance) {
       attemptAttack(fighter, "special");
-      fighter.aiDecisionTimer = 0.52 + Math.random() * 0.2;
+      fighter.aiDecisionTimer = fighter.aiDecisionBase + 0.1 + Math.random() * fighter.aiDecisionVariance;
     }
   }
 
@@ -1206,7 +1332,7 @@ function tryHit(attacker, defender) {
 
   if (attacker.isAI) {
     damage *= attacker.aiDamageMultiplier;
-    stun *= 0.82;
+    stun *= attacker.aiStunMultiplier;
   }
 
   if (defender.isAI) {
@@ -1899,6 +2025,15 @@ function init() {
       void requestAudioUnlock();
       playSound("select");
       setPlayerCount(Number(button.dataset.playerCount));
+    });
+  });
+
+  difficultyButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      void requestAudioUnlock();
+      playSound("select");
+      STATE.aiDifficulty = button.dataset.difficulty;
+      updateSelectionUI();
     });
   });
 
