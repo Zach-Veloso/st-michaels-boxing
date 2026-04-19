@@ -31,6 +31,7 @@ body {
 
 body {
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 button {
@@ -924,6 +925,7 @@ button {
 #game-canvas {
   width: 100%;
   height: auto;
+  aspect-ratio: 16 / 9;
   display: block;
   background: linear-gradient(180deg, #82caff 0%, #dff5ff 35%, #b6e4ff 50%, #7bb280 100%);
 }
@@ -965,6 +967,109 @@ button {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
   padding: 18px 24px 24px;
+}
+
+.touch-controls {
+  display: none;
+  padding: 14px 24px 22px;
+  border-top: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 54%),
+    rgba(6, 12, 20, 0.64);
+}
+
+.touch-controls-header {
+  margin-bottom: 12px;
+}
+
+.touch-controls-copy,
+.touch-pad-name {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.touch-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.touch-pad {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 55%),
+    var(--panel-soft);
+  box-shadow: var(--shadow);
+}
+
+.touch-pad-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.touch-pad-name {
+  text-align: right;
+  font-weight: 700;
+}
+
+.touch-pad-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.touch-button {
+  min-height: 56px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.touch-button.attack {
+  background: linear-gradient(135deg, rgba(242, 193, 78, 0.88), rgba(219, 79, 94, 0.84));
+  color: #171109;
+}
+
+.touch-button.special {
+  grid-column: span 2;
+  background: linear-gradient(135deg, rgba(100, 215, 255, 0.92), rgba(111, 132, 255, 0.92));
+  color: #08111d;
+}
+
+.touch-button.jump {
+  background: linear-gradient(135deg, rgba(143, 230, 183, 0.92), rgba(53, 181, 128, 0.92));
+  color: #081811;
+}
+
+.touch-button.guard {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.touch-button.active {
+  transform: translateY(2px) scale(0.98);
+  filter: brightness(0.94);
+}
+
+body.touch-device #match-screen .bottom-strip {
+  display: none;
+}
+
+body.touch-device .touch-controls:not([hidden]) {
+  display: block;
 }
 
 .tip-card {
@@ -1149,6 +1254,19 @@ button {
   .venue-round-grid {
     grid-template-columns: 1fr;
   }
+
+  .venue-choice-grid,
+  .touch-controls-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hud {
+    grid-template-columns: 1fr;
+  }
+
+  .hud-center {
+    min-width: 0;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1157,9 +1275,18 @@ button {
     padding-top: 10px;
   }
 
+  .top-banner {
+    padding: 0 4px 14px;
+  }
+
+  .splash-card {
+    margin: 24px 12px;
+    padding: 26px 20px;
+  }
+
   .mode-card {
-    margin: 50px 12px;
-    padding: 24px;
+    margin: 24px 12px;
+    padding: 24px 20px;
   }
 
   .banner-row {
@@ -1174,6 +1301,7 @@ button {
   .section-header {
     flex-direction: column;
     align-items: stretch;
+    padding: 20px 16px 0;
   }
 
   .venue-panel-header {
@@ -1192,10 +1320,90 @@ button {
   .difficulty-panel {
     flex-direction: column;
     align-items: stretch;
+    margin: 14px 16px 0;
   }
 
   .card-actions,
   .overlay-actions {
     flex-direction: column;
+  }
+
+  .selection-players,
+  .roster-grid {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .venue-choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .venue-panel {
+    margin: 0 16px;
+    padding: 18px;
+  }
+
+  .arena-shell {
+    margin: 0 12px;
+    border-radius: 22px;
+  }
+
+  .touch-controls {
+    padding: 12px 12px 18px;
+  }
+
+  .touch-controls-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .touch-pad-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .touch-button.special {
+    grid-column: span 3;
+  }
+
+  .overlay-card {
+    min-width: min(360px, calc(100vw - 32px));
+    padding: 22px;
+  }
+}
+
+@media (max-width: 520px) {
+  .screen-frame {
+    border-radius: 20px;
+  }
+
+  .selection-panel,
+  .fighter-card,
+  .venue-round-card,
+  .hud-player-card,
+  .touch-pad {
+    border-radius: 18px;
+  }
+
+  .difficulty-button,
+  .primary-button,
+  .secondary-button,
+  .picker-button {
+    width: 100%;
+  }
+
+  .touch-pad-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .touch-pad-name {
+    text-align: left;
+  }
+
+  .touch-pad-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .touch-button.special {
+    grid-column: span 2;
   }
 }

@@ -326,12 +326,15 @@ const backButton = document.getElementById("back-button");
 const soundToggleButton = document.getElementById("sound-toggle");
 const hudPlayers = document.getElementById("hud-players");
 const controlsStrip = document.getElementById("controls-strip");
+const touchControls = document.getElementById("touch-controls");
 const modeButtons = [...document.querySelectorAll(".mode-button")];
 
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
 
 const pressedKeys = new Set();
+const virtualKeys = new Set();
+const activeTouchPointers = new Map();
 let fighters = [];
 let hudElements = {};
 let lastTimestamp = 0;
@@ -348,6 +351,16 @@ const AUDIO = {
 const MUSIC_TRACKS = {
   main: createMusicTrack("./assets/audio/castle-theme.wav", 0.72)
 };
+
+const TOUCH_ACTIONS = [
+  { id: "left", label: "Left", behavior: "hold", className: "move" },
+  { id: "right", label: "Right", behavior: "hold", className: "move" },
+  { id: "jump", label: "Jump", behavior: "tap", className: "jump" },
+  { id: "block", label: "Block", behavior: "hold", className: "guard" },
+  { id: "jab", label: "Jab", behavior: "tap", className: "attack" },
+  { id: "hook", label: "Hook", behavior: "tap", className: "attack" },
+  { id: "special", label: "Special", behavior: "tap", className: "special" }
+];
 
 function updateSoundToggleUI() {
   if (!soundToggleButton) {
@@ -510,6 +523,18 @@ function createMusicTrack(src, volume) {
   track.preload = "auto";
   track.volume = volume;
   return track;
+}
+
+function isTouchDevice() {
+  return (
+    window.matchMedia("(pointer: coarse)").matches ||
+    window.matchMedia("(hover: none)").matches ||
+    "ontouchstart" in window
+  );
+}
+
+function updateInputModeUI() {
+  document.body.classList.toggle("touch-device", isTouchDevice());
 }
 
 function playTheme(themeName) {
@@ -686,11 +711,192 @@ function wirePortraitFrames(root) {
 }
 
 function isPressed(binding) {
-  return binding.some((key) => pressedKeys.has(key));
+  return binding.some((key) => pressedKeys.has(key) || virtualKeys.has(key));
 }
 
 function matchesKey(binding, key) {
   return binding.includes(key);
+}
+
+function getPrimaryControlKey(slotId, action) {
+  return KEYS[slotId]?.[action]?.[0] || null;
+}
+
+function clearVirtualInputs() {
+  virtualKeys.clear();
+  activeTouchPointers.clear();
+
+  if (!touchControls) {
+    return;
+  }
+
+  touchControls.querySelectorAll(".touch-button.active").forEach((button) => {
+    button.classList.remove("active");
+  });
+}
+
+function pulseVirtualKey(key, duration = 140) {
+  if (!key) {
+    return;
+  }
+
+  virtualKeys.add(key);
+  window.setTimeout(() => {
+    virtualKeys.delete(key);
+  }, duration);
+}
+
+function releaseTouchPointer(pointerId) {
+  const active = activeTouchPointers.get(pointerId);
+  if (!active) {
+    return;
+  }
+
+  virtualKeys.delete(active.key);
+  active.button.classList.remove("active");
+  activeTouchPointers.delete(pointerId);
+}
+
+function triggerTouchAttack(slotId, action, button) {
+  const fighter = fighters.find((entry) => entry.slotId === slotId);
+  if (!STATE.inMatch || !fighter || fighter.isAI || !isAliveFighter(fighter)) {
+    return;
+  }
+
+  button.classList.add("active");
+  window.setTimeout(() => {
+    button.classList.remove("active");
+  }, 140);
+
+  if (action === "jump") {
+    pulseVirtualKey(getPrimaryControlKey(slotId, action));
+    return;
+  }
+
+  attemptAttack(fighter, action);
+}
+
+function bindTouchControls() {
+  if (!touchControls) {
+    return;
+  }
+
+  touchControls.querySelectorAll(".touch-button").forEach((button) => {
+    button.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+    });
+
+    button.addEventListener("pointerdown", (event) => {
+      if (event.button !== undefined && event.button !== 0) {
+        return;
+      }
+
+      event.preventDefault();
+      void requestAudioUnlock();
+
+      const slotId = button.dataset.player;
+      const action = button.dataset.action;
+      const config = TOUCH_ACTIONS.find((entry) => entry.id === action);
+      if (!slotId || !action || !config) {
+        return;
+      }
+
+      if (!STATE.inMatch) {
+        return;
+      }
+
+      if (typeof button.setPointerCapture === "function") {
+        try {
+          button.setPointerCapture(event.pointerId);
+        } catch {
+          // Ignore browsers that reject capture for synthetic pointers.
+        }
+      }
+
+      if (config.behavior === "hold") {
+        const key = getPrimaryControlKey(slotId, action);
+        if (!key) {
+          return;
+        }
+
+        virtualKeys.add(key);
+        activeTouchPointers.set(event.pointerId, { key, button });
+        button.classList.add("active");
+        return;
+      }
+
+      triggerTouchAttack(slotId, action, button);
+    });
+
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach((eventName) => {
+      button.addEventListener(eventName, (event) => {
+        releaseTouchPointer(event.pointerId);
+      });
+    });
+  });
+}
+
+function renderTouchControls() {
+  updateInputModeUI();
+
+  if (!touchControls) {
+    return;
+  }
+
+  const showTouchControls = isTouchDevice() && STATE.currentScreen === "match";
+  const slotIds = getRequiredSlotIds().filter((slotId) => !isAISlot(slotId));
+
+  if (!showTouchControls || !slotIds.length) {
+    touchControls.hidden = true;
+    touchControls.innerHTML = "";
+    clearVirtualInputs();
+    return;
+  }
+
+  const helperText = slotIds.length === 1
+    ? "Tap jump and attacks. Hold left, right, and block."
+    : "Each human player gets their own touch pad. Landscape mode works best on a phone.";
+
+  const padsMarkup = slotIds.map((slotId) => {
+    const meta = getSlotMeta(slotId);
+    const fighter = fighters.find((entry) => entry.slotId === slotId);
+    const fighterName = fighter ? fighter.character.name : STATE.selections[slotId]?.name || meta.label;
+    const buttonsMarkup = TOUCH_ACTIONS.map((action) => `
+      <button
+        class="touch-button ${action.className}"
+        type="button"
+        data-player="${slotId}"
+        data-action="${action.id}"
+      >${action.label}</button>
+    `).join("");
+
+    return `
+      <section class="touch-pad ${meta.buttonClass}">
+        <div class="touch-pad-header">
+          <p class="eyebrow">${meta.label}</p>
+          <p class="touch-pad-name">${fighterName}</p>
+        </div>
+        <div class="touch-pad-grid">
+          ${buttonsMarkup}
+        </div>
+      </section>
+    `;
+  }).join("");
+
+  touchControls.hidden = false;
+  touchControls.innerHTML = `
+    <div class="touch-controls-header">
+      <div>
+        <p class="eyebrow">Phone Controls</p>
+        <p class="touch-controls-copy">${helperText}</p>
+      </div>
+    </div>
+    <div class="touch-controls-grid">
+      ${padsMarkup}
+    </div>
+  `;
+
+  bindTouchControls();
 }
 
 function formatElapsedTime(seconds) {
@@ -840,6 +1046,7 @@ function showScreen(target) {
     screen.classList.toggle("active", name === target);
   });
   STATE.currentScreen = target;
+  renderTouchControls();
   syncScreenAudio();
 }
 
@@ -1123,6 +1330,7 @@ function setPlayerCount(count) {
   resetWins();
   resetRoundVenues();
   pressedKeys.clear();
+  clearVirtualInputs();
   overlay.classList.add("hidden");
   setMessage(`${STATE.totalRounds} one-minute round${STATE.totalRounds === 1 ? "" : "s"}. Touch gloves and get ready.`);
   renderHudShell();
@@ -1198,6 +1406,7 @@ function beginMatch() {
     return;
   }
 
+  clearVirtualInputs();
   const positions = getSpawnPositions(slotIds.length);
   fighters = slotIds.map((slotId, index) => createFighter(STATE.selections[slotId], slotId, positions[index]));
   STATE.inMatch = true;
@@ -1240,6 +1449,7 @@ function backToSelection() {
   STATE.round = 1;
   STATE.roundTimeElapsed = 0;
   fighters = [];
+  clearVirtualInputs();
   overlay.classList.add("hidden");
   showScreen("select");
   updateSelectionUI();
@@ -1700,6 +1910,7 @@ function concludeRound(winner, copy) {
   STATE.resultLocked = true;
   STATE.inMatch = false;
   STATE.roundTimeElapsed = STATE.roundTimeLimit;
+  clearVirtualInputs();
 
   if (winner) {
     STATE.wins[winner.slotId] += 1;
@@ -2267,6 +2478,7 @@ function init() {
   resetRoundVenues();
   updateSelectionUI();
   renderHudShell();
+  updateInputModeUI();
   showScreen("splash");
   updateSoundToggleUI();
 
@@ -2340,6 +2552,8 @@ function init() {
   });
   window.addEventListener("keydown", handleKeyDown);
   window.addEventListener("keyup", handleKeyUp);
+  window.addEventListener("blur", clearVirtualInputs);
+  window.addEventListener("resize", renderTouchControls);
 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
