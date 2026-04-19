@@ -1054,10 +1054,11 @@ function renderSelectionPanels() {
   const slotIds = getRequiredSlotIds();
   selectionPlayers.innerHTML = slotIds.map((slotId) => {
     const meta = getSlotMeta(slotId);
-    const playerLabel = PLAYER_SLOTS[slotId]?.label || meta.label;
+    const isComputerSlot = isAISlot(slotId);
+    const playerLabel = isComputerSlot ? "AI" : PLAYER_SLOTS[slotId]?.label || meta.label;
 
     return `
-      <article class="selection-panel">
+      <article class="selection-panel${isComputerSlot ? " ai-panel" : ""}">
         <h3>${playerLabel}</h3>
         <p class="controls-copy">${meta.controls}</p>
       </article>
