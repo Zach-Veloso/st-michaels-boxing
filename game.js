@@ -94,18 +94,57 @@ const KEYS = {
     hook: ["m", "."],
     block: ["arrowdown", "k"],
     special: ["u", "/"]
+  },
+  player3: {
+    left: ["c", "4"],
+    right: ["b", "6"],
+    jump: ["v", "8"],
+    jab: ["z", "1"],
+    hook: ["r", "2"],
+    block: ["x", "5"],
+    special: ["t", "3"]
   }
+};
+
+const PLAYER_SLOTS = {
+  player1: {
+    label: "Player 1",
+    shortLabel: "P1",
+    buttonClass: "player1",
+    controls: "Move `A/D`, Jump `W`, Block `S`, Jab `F`, Hook `G`, Special `H`."
+  },
+  player2: {
+    label: "Player 2",
+    shortLabel: "P2",
+    buttonClass: "player2",
+    controls: "Move `J/L` or arrows, Jump `I` or `Arrow Up`, Block `K` or `Arrow Down`, Jab `N`, Hook `M`, Special `U`."
+  },
+  player3: {
+    label: "Player 3",
+    shortLabel: "P3",
+    buttonClass: "player3",
+    controls: "Move `C/B` or `4/6`, Jump `V` or `8`, Block `X` or `5`, Jab `Z` or `1`, Hook `R` or `2`, Special `T` or `3`."
+  }
+};
+
+const MODE_SLOTS = {
+  1: ["player1", "player2"],
+  2: ["player1", "player2"],
+  3: ["player1", "player2", "player3"]
 };
 
 const STATE = {
   currentScreen: "splash",
+  playerCount: null,
   selections: {
     player1: null,
-    player2: null
+    player2: null,
+    player3: null
   },
   wins: {
     player1: 0,
-    player2: 0
+    player2: 0,
+    player3: 0
   },
   round: 1,
   roundTimeLimit: 180,
@@ -125,15 +164,18 @@ const TEACHER_PORTRAITS = Object.fromEntries(
 
 const screens = {
   splash: document.getElementById("splash-screen"),
+  mode: document.getElementById("mode-screen"),
   select: document.getElementById("select-screen"),
   match: document.getElementById("match-screen")
 };
 
 const roster = document.getElementById("roster");
+const selectionPlayers = document.getElementById("selection-players");
+const selectSubtitle = document.getElementById("select-subtitle");
 const startMatchButton = document.getElementById("start-match-button");
+const changeModeButton = document.getElementById("change-mode-button");
 const enterButton = document.getElementById("enter-button");
-const player1Preview = document.getElementById("player1-preview");
-const player2Preview = document.getElementById("player2-preview");
+const modeBackButton = document.getElementById("mode-back-button");
 const messageBanner = document.getElementById("message-banner");
 const roundLabel = document.getElementById("round-label");
 const timerLabel = document.getElementById("timer-label");
@@ -143,22 +185,16 @@ const overlayCopy = document.getElementById("overlay-copy");
 const rematchButton = document.getElementById("rematch-button");
 const backButton = document.getElementById("back-button");
 const soundToggleButton = document.getElementById("sound-toggle");
-const hud = {
-  player1Name: document.getElementById("player1-name"),
-  player2Name: document.getElementById("player2-name"),
-  player1Health: document.getElementById("player1-health"),
-  player2Health: document.getElementById("player2-health"),
-  player1Special: document.getElementById("player1-special"),
-  player2Special: document.getElementById("player2-special"),
-  player1Score: document.getElementById("player1-score"),
-  player2Score: document.getElementById("player2-score")
-};
+const hudPlayers = document.getElementById("hud-players");
+const controlsStrip = document.getElementById("controls-strip");
+const modeButtons = [...document.querySelectorAll(".mode-button")];
 
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
 
 const pressedKeys = new Set();
 let fighters = [];
+let hudElements = {};
 let lastTimestamp = 0;
 let loopActive = false;
 const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -166,9 +202,49 @@ const AUDIO = {
   ctx: null,
   master: null,
   enabled: true,
-  menuMusicTimer: null,
-  menuMusicToken: 0,
+  themeTimer: null,
+  themeToken: 0,
   unlocked: false
+};
+
+const AUDIO_THEMES = {
+  splash: {
+    loopMs: 3920,
+    notes: [
+      { frequency: 261.63, duration: 0.42, delay: 0.08, gain: 0.035, type: "triangle", release: 0.18, pan: -0.1 },
+      { frequency: 329.63, duration: 0.32, delay: 0.48, gain: 0.028, type: "triangle", release: 0.16, pan: 0.08 },
+      { frequency: 392, duration: 0.4, delay: 0.86, gain: 0.038, type: "triangle", release: 0.18, pan: 0.12 },
+      { frequency: 523.25, duration: 0.48, delay: 1.34, gain: 0.034, type: "triangle", release: 0.2, pan: 0.04 },
+      { frequency: 392, duration: 0.32, delay: 2.02, gain: 0.03, type: "triangle", release: 0.16, pan: -0.05 },
+      { frequency: 329.63, duration: 0.38, delay: 2.44, gain: 0.028, type: "triangle", release: 0.16, pan: -0.12 },
+      { frequency: 261.63, duration: 0.54, delay: 2.9, gain: 0.04, type: "triangle", release: 0.22, pan: 0 }
+    ],
+    bass: [
+      { frequency: 130.81, duration: 0.58, delay: 0.1, gain: 0.026, type: "sine", release: 0.2, pan: -0.08 },
+      { frequency: 164.81, duration: 0.54, delay: 1.34, gain: 0.024, type: "sine", release: 0.2, pan: 0.06 },
+      { frequency: 130.81, duration: 0.66, delay: 2.9, gain: 0.026, type: "sine", release: 0.2, pan: 0.02 }
+    ]
+  },
+  lobby: {
+    loopMs: 3180,
+    notes: [
+      { frequency: 349.23, duration: 0.16, delay: 0.08, gain: 0.03, type: "triangle", release: 0.12, pan: -0.12 },
+      { frequency: 440, duration: 0.14, delay: 0.34, gain: 0.03, type: "triangle", release: 0.12, pan: 0.12 },
+      { frequency: 523.25, duration: 0.17, delay: 0.58, gain: 0.032, type: "triangle", release: 0.12, pan: -0.08 },
+      { frequency: 587.33, duration: 0.16, delay: 0.84, gain: 0.034, type: "triangle", release: 0.12, pan: 0.1 },
+      { frequency: 523.25, duration: 0.16, delay: 1.12, gain: 0.03, type: "triangle", release: 0.12, pan: -0.04 },
+      { frequency: 440, duration: 0.16, delay: 1.38, gain: 0.03, type: "triangle", release: 0.12, pan: 0.14 },
+      { frequency: 392, duration: 0.18, delay: 1.7, gain: 0.03, type: "triangle", release: 0.12, pan: -0.1 },
+      { frequency: 523.25, duration: 0.2, delay: 2.02, gain: 0.034, type: "triangle", release: 0.14, pan: 0.08 },
+      { frequency: 659.25, duration: 0.22, delay: 2.36, gain: 0.036, type: "triangle", release: 0.14, pan: 0.02 }
+    ],
+    bass: [
+      { frequency: 174.61, duration: 0.34, delay: 0.08, gain: 0.02, type: "sine", release: 0.16, pan: -0.04 },
+      { frequency: 196, duration: 0.32, delay: 0.84, gain: 0.02, type: "sine", release: 0.16, pan: 0.04 },
+      { frequency: 164.81, duration: 0.34, delay: 1.7, gain: 0.02, type: "sine", release: 0.16, pan: -0.06 },
+      { frequency: 196, duration: 0.4, delay: 2.36, gain: 0.022, type: "sine", release: 0.18, pan: 0.04 }
+    ]
+  }
 };
 
 function updateSoundToggleUI() {
@@ -188,7 +264,7 @@ function ensureAudio() {
   if (!AUDIO.ctx || AUDIO.ctx.state === "closed") {
     AUDIO.ctx = new AudioContextClass();
     AUDIO.master = AUDIO.ctx.createGain();
-    AUDIO.master.gain.value = 0.28;
+    AUDIO.master.gain.value = 0.24;
     AUDIO.master.connect(AUDIO.ctx.destination);
     AUDIO.unlocked = false;
   }
@@ -222,24 +298,45 @@ function primeAudioOutput() {
 }
 
 async function unlockAudioFromGesture() {
-  const ctx = ensureAudio();
-  if (!ctx) {
+  const ctxInstance = ensureAudio();
+  if (!ctxInstance) {
     return null;
   }
 
-  if (ctx.state !== "running") {
+  if (ctxInstance.state !== "running") {
     try {
-      await ctx.resume();
+      await ctxInstance.resume();
     } catch {
-      return ctx;
+      return ctxInstance;
     }
   }
 
-  if (ctx.state === "running") {
+  if (ctxInstance.state === "running") {
     primeAudioOutput();
   }
 
-  return ctx;
+  return ctxInstance;
+}
+
+function getThemeForCurrentScreen() {
+  if (STATE.currentScreen === "splash") {
+    return "splash";
+  }
+
+  if (STATE.currentScreen === "mode" || STATE.currentScreen === "select") {
+    return "lobby";
+  }
+
+  return null;
+}
+
+function stopTheme() {
+  AUDIO.themeToken += 1;
+
+  if (AUDIO.themeTimer) {
+    window.clearTimeout(AUDIO.themeTimer);
+    AUDIO.themeTimer = null;
+  }
 }
 
 async function requestAudioUnlock() {
@@ -248,12 +345,12 @@ async function requestAudioUnlock() {
   }
 
   const wasReady = Boolean(AUDIO.unlocked && AUDIO.ctx && AUDIO.ctx.state === "running");
-  const ctx = await unlockAudioFromGesture();
-  if (!ctx) {
+  const ctxInstance = await unlockAudioFromGesture();
+  if (!ctxInstance) {
     return;
   }
 
-  if (STATE.currentScreen === "select" && (!wasReady || AUDIO.menuMusicTimer === null)) {
+  if (getThemeForCurrentScreen() && (!wasReady || AUDIO.themeTimer === null)) {
     syncScreenAudio();
   }
 }
@@ -269,16 +366,16 @@ function playTone({
   delay = 0,
   pan = 0
 }) {
-  const ctx = ensureAudio();
-  if (!ctx || !AUDIO.enabled) {
+  const ctxInstance = ensureAudio();
+  if (!ctxInstance || !AUDIO.enabled) {
     return;
   }
 
-  const startAt = ctx.currentTime + delay;
-  const osc = ctx.createOscillator();
-  const amp = ctx.createGain();
-  const hasStereo = typeof ctx.createStereoPanner === "function";
-  const panner = hasStereo ? ctx.createStereoPanner() : null;
+  const startAt = ctxInstance.currentTime + delay;
+  const osc = ctxInstance.createOscillator();
+  const amp = ctxInstance.createGain();
+  const hasStereo = typeof ctxInstance.createStereoPanner === "function";
+  const panner = hasStereo ? ctxInstance.createStereoPanner() : null;
 
   osc.type = type;
   osc.frequency.setValueAtTime(Math.max(1, frequency), startAt);
@@ -302,6 +399,48 @@ function playTone({
 
   osc.start(startAt);
   osc.stop(startAt + duration + release + 0.04);
+}
+
+function playTheme(themeName, loopToken) {
+  if (!AUDIO.enabled || getThemeForCurrentScreen() !== themeName || AUDIO.themeToken !== loopToken) {
+    return;
+  }
+
+  const theme = AUDIO_THEMES[themeName];
+  if (!theme) {
+    return;
+  }
+
+  theme.notes.forEach((note) => {
+    playTone(note);
+  });
+
+  theme.bass.forEach((note) => {
+    playTone(note);
+  });
+
+  AUDIO.themeTimer = window.setTimeout(() => {
+    if (AUDIO.themeToken !== loopToken) {
+      return;
+    }
+    playTheme(themeName, loopToken);
+  }, theme.loopMs);
+}
+
+function syncScreenAudio() {
+  const themeName = getThemeForCurrentScreen();
+  if (themeName && AUDIO.enabled) {
+    const ctxInstance = ensureAudio();
+    if (!ctxInstance) {
+      return;
+    }
+
+    stopTheme();
+    playTheme(themeName, AUDIO.themeToken);
+    return;
+  }
+
+  stopTheme();
 }
 
 function playSound(name) {
@@ -363,81 +502,6 @@ function playSound(name) {
   }
 }
 
-function stopMenuMusic() {
-  AUDIO.menuMusicToken += 1;
-
-  if (AUDIO.menuMusicTimer) {
-    window.clearTimeout(AUDIO.menuMusicTimer);
-    AUDIO.menuMusicTimer = null;
-  }
-}
-
-function queueMenuMusic(loopToken) {
-  if (!AUDIO.enabled || STATE.currentScreen !== "select" || AUDIO.menuMusicToken !== loopToken) {
-    return;
-  }
-
-  // Keep the select screen feeling lively without overpowering the action effects.
-  const leadNotes = [
-    { frequency: 392, duration: 0.16, delay: 0.12 },
-    { frequency: 440, duration: 0.16, delay: 0.42 },
-    { frequency: 523.25, duration: 0.2, delay: 0.74 },
-    { frequency: 440, duration: 0.16, delay: 1.1 },
-    { frequency: 392, duration: 0.16, delay: 1.4 },
-    { frequency: 523.25, duration: 0.18, delay: 1.74 },
-    { frequency: 587.33, duration: 0.2, delay: 2.06 },
-    { frequency: 523.25, duration: 0.22, delay: 2.42 }
-  ];
-  const bassNotes = [
-    { frequency: 196, duration: 0.34, delay: 0.12 },
-    { frequency: 220, duration: 0.3, delay: 0.74 },
-    { frequency: 174.61, duration: 0.34, delay: 1.4 },
-    { frequency: 196, duration: 0.38, delay: 2.06 }
-  ];
-
-  leadNotes.forEach((note, index) => {
-    playTone({
-      ...note,
-      gain: index >= 6 ? 0.034 : 0.03,
-      type: "triangle",
-      pan: index % 2 === 0 ? -0.15 : 0.15,
-      release: 0.12
-    });
-  });
-
-  bassNotes.forEach((note, index) => {
-    playTone({
-      ...note,
-      gain: 0.022,
-      type: "sine",
-      pan: index % 2 === 0 ? -0.08 : 0.08,
-      release: 0.16
-    });
-  });
-
-  AUDIO.menuMusicTimer = window.setTimeout(() => {
-    if (AUDIO.menuMusicToken !== loopToken) {
-      return;
-    }
-    queueMenuMusic(loopToken);
-  }, 2900);
-}
-
-function syncScreenAudio() {
-  if (STATE.currentScreen === "select" && AUDIO.enabled) {
-    const ctx = ensureAudio();
-    if (!ctx) {
-      return;
-    }
-
-    stopMenuMusic();
-    queueMenuMusic(AUDIO.menuMusicToken);
-    return;
-  }
-
-  stopMenuMusic();
-}
-
 async function toggleSound() {
   AUDIO.enabled = !AUDIO.enabled;
   updateSoundToggleUI();
@@ -496,6 +560,10 @@ function buildPortraitMarkup(character, className) {
 }
 
 function wirePortraitFrames(root) {
+  if (!root) {
+    return;
+  }
+
   root.querySelectorAll(".photo-frame").forEach((frame) => {
     const image = frame.querySelector(".portrait-photo");
     if (!image) {
@@ -537,6 +605,45 @@ function isGameplayKey(key) {
   );
 }
 
+function getRequiredSlotIds() {
+  return MODE_SLOTS[STATE.playerCount] ? [...MODE_SLOTS[STATE.playerCount]] : [];
+}
+
+function isAISlot(slotId) {
+  return STATE.playerCount === 1 && slotId === "player2";
+}
+
+function getSlotMeta(slotId) {
+  const base = PLAYER_SLOTS[slotId];
+  if (!base) {
+    return null;
+  }
+
+  if (isAISlot(slotId)) {
+    return {
+      ...base,
+      label: "Computer",
+      shortLabel: "AI",
+      buttonClass: "ai",
+      controls: "AI controlled opponent. It advances, blocks, and throws specials when it sees an opening."
+    };
+  }
+
+  return { ...base };
+}
+
+function resetSelections() {
+  Object.keys(STATE.selections).forEach((slotId) => {
+    STATE.selections[slotId] = null;
+  });
+}
+
+function resetWins() {
+  Object.keys(STATE.wins).forEach((slotId) => {
+    STATE.wins[slotId] = 0;
+  });
+}
+
 function showScreen(target) {
   Object.entries(screens).forEach(([name, screen]) => {
     screen.classList.toggle("active", name === target);
@@ -545,12 +652,65 @@ function showScreen(target) {
   syncScreenAudio();
 }
 
+function renderSelectionPanels() {
+  const slotIds = getRequiredSlotIds();
+  selectionPlayers.innerHTML = slotIds.map((slotId) => {
+    const meta = getSlotMeta(slotId);
+    const character = STATE.selections[slotId];
+    const emptyCopy = isAISlot(slotId) ? "Choose the computer opponent" : "Choose a teacher";
+
+    return `
+      <article class="selection-panel">
+        <h3>${meta.label}</h3>
+        <div class="player-preview ${character ? "" : "empty"}">
+          ${character ? `
+            <div>
+              ${buildPortraitMarkup(character, "preview-badge")}
+              <p class="preview-name">${character.name}</p>
+              <p class="preview-style">${character.style}</p>
+              <p class="preview-ability"><strong>${character.abilityName}:</strong> ${character.abilityText}</p>
+            </div>
+          ` : `<p>${emptyCopy}</p>`}
+        </div>
+        <p class="controls-label">${isAISlot(slotId) ? "Fighter Type" : "Controls"}</p>
+        <p class="controls-copy">${meta.controls}</p>
+      </article>
+    `;
+  }).join("");
+
+  wirePortraitFrames(selectionPlayers);
+}
+
+function getSelectionSubtitle() {
+  if (STATE.playerCount === 1) {
+    return "Pick your fighter first, then choose which teacher the computer will control.";
+  }
+
+  if (STATE.playerCount === 2) {
+    return "Each player picks one teacher, then the fight starts as normal.";
+  }
+
+  if (STATE.playerCount === 3) {
+    return "All three players pick a teacher, then the match becomes a three-way brawl.";
+  }
+
+  return "Pick the fighters for the next match.";
+}
+
 function renderRoster() {
+  const slotIds = getRequiredSlotIds();
   roster.innerHTML = "";
 
   CHARACTERS.forEach((character) => {
     const card = document.createElement("article");
     card.className = "fighter-card";
+    const buttonsMarkup = slotIds.map((slotId) => {
+      const meta = getSlotMeta(slotId);
+      const selected = STATE.selections[slotId] && STATE.selections[slotId].id === character.id;
+      const label = selected ? `${meta.shortLabel} ready` : `Pick for ${meta.shortLabel}`;
+      return `<button class="picker-button ${meta.buttonClass}${selected ? " selected" : ""}" data-player="${slotId}" data-character="${character.id}">${label}</button>`;
+    }).join("");
+
     card.innerHTML = `
       <div class="card-top">
         ${buildPortraitMarkup(character, "portrait")}
@@ -561,10 +721,7 @@ function renderRoster() {
         </div>
       </div>
       <p class="ability"><strong>${character.abilityName}:</strong> ${character.abilityText}</p>
-      <div class="card-actions">
-        <button class="picker-button player1" data-player="player1" data-character="${character.id}">Pick for P1</button>
-        <button class="picker-button player2" data-player="player2" data-character="${character.id}">Pick for P2</button>
-      </div>
+      <div class="card-actions">${buttonsMarkup}</div>
     `;
     roster.appendChild(card);
   });
@@ -575,50 +732,162 @@ function renderRoster() {
     button.addEventListener("click", async () => {
       await requestAudioUnlock();
       playSound("select");
-      const player = button.dataset.player;
+      const slotId = button.dataset.player;
       const character = CHARACTERS.find((entry) => entry.id === button.dataset.character);
-      STATE.selections[player] = character;
+      STATE.selections[slotId] = character;
       updateSelectionUI();
     });
   });
 }
 
-function renderPreview(container, character) {
-  if (!character) {
-    container.className = "player-preview empty";
-    container.innerHTML = "<p>Choose a teacher</p>";
-    return;
-  }
+function renderControlCards() {
+  const slotIds = getRequiredSlotIds();
+  const cards = slotIds.map((slotId) => {
+    const meta = getSlotMeta(slotId);
+    const title = isAISlot(slotId) ? "Computer Opponent" : `${meta.label} Controls`;
+    return `
+      <div class="tip-card">
+        <h3>${title}</h3>
+        <p>${meta.controls}</p>
+      </div>
+    `;
+  }).join("");
 
-  container.className = "player-preview";
-  container.innerHTML = `
-    <div>
-      ${buildPortraitMarkup(character, "preview-badge")}
-      <p class="preview-name">${character.name}</p>
-      <p class="preview-style">${character.style}</p>
-      <p class="preview-ability"><strong>${character.abilityName}:</strong> ${character.abilityText}</p>
+  const rulesText = slotIds.length === 3
+    ? "Last fighter standing wins instantly. If the round clock reaches `3:00`, the match is an automatic draw."
+    : "KO wins instantly. If the round clock reaches `3:00`, the result is an automatic draw.";
+
+  controlsStrip.innerHTML = `
+    ${cards}
+    <div class="tip-card">
+      <h3>Round Rules</h3>
+      <p>${rulesText}</p>
     </div>
   `;
-  wirePortraitFrames(container);
 }
 
 function updateSelectionUI() {
-  renderPreview(player1Preview, STATE.selections.player1);
-  renderPreview(player2Preview, STATE.selections.player2);
-  startMatchButton.disabled = !(STATE.selections.player1 && STATE.selections.player2);
+  const slotIds = getRequiredSlotIds();
+  if (!slotIds.length) {
+    selectionPlayers.innerHTML = "";
+    roster.innerHTML = "";
+    controlsStrip.innerHTML = "";
+    startMatchButton.disabled = true;
+    return;
+  }
+
+  selectSubtitle.textContent = getSelectionSubtitle();
+  renderSelectionPanels();
+  renderRoster();
+  renderControlCards();
+  startMatchButton.disabled = slotIds.some((slotId) => !STATE.selections[slotId]);
 }
 
-function createFighter(character, player, startX) {
+function renderHudShell() {
+  const slotIds = getRequiredSlotIds();
+  hudPlayers.innerHTML = "";
+  hudElements = {};
+
+  slotIds.forEach((slotId) => {
+    const meta = getSlotMeta(slotId);
+    const card = document.createElement("article");
+    card.className = `hud-player-card ${meta.buttonClass}`;
+    card.innerHTML = `
+      <p class="eyebrow">${meta.label}</p>
+      <p class="hud-name">${meta.label}</p>
+      <div class="meter">
+        <div class="meter-fill health"></div>
+      </div>
+      <p class="meter-label">Special ready</p>
+      <p class="score-label">Wins: 0</p>
+    `;
+    hudPlayers.appendChild(card);
+    hudElements[slotId] = {
+      name: card.querySelector(".hud-name"),
+      health: card.querySelector(".meter-fill"),
+      special: card.querySelector(".meter-label"),
+      score: card.querySelector(".score-label")
+    };
+  });
+}
+
+function updateHud() {
+  const slotIds = getRequiredSlotIds();
+  if (!slotIds.length) {
+    return;
+  }
+
+  if (slotIds.some((slotId) => !hudElements[slotId])) {
+    renderHudShell();
+  }
+
+  slotIds.forEach((slotId) => {
+    const meta = getSlotMeta(slotId);
+    const fighter = fighters.find((entry) => entry.slotId === slotId);
+    const elements = hudElements[slotId];
+    if (!elements) {
+      return;
+    }
+
+    elements.name.textContent = fighter ? `${meta.label}: ${fighter.character.name}` : meta.label;
+    elements.health.style.width = fighter ? `${Math.max(0, (fighter.health / fighter.character.maxHealth) * 100)}%` : "100%";
+    elements.special.textContent = fighter
+      ? fighter.health <= 0
+        ? "Out"
+        : fighter.specialCooldown <= 0
+          ? "Special ready"
+          : `Special in ${fighter.specialCooldown.toFixed(1)}s`
+      : "Special ready";
+    elements.score.textContent = `Wins: ${STATE.wins[slotId]}`;
+  });
+
+  roundLabel.textContent = `Round ${STATE.round}`;
+  timerLabel.textContent = `Time ${formatElapsedTime(STATE.roundTimeElapsed)} / 3:00`;
+  messageBanner.textContent = STATE.message;
+}
+
+function setMessage(text) {
+  STATE.message = text;
+  messageBanner.textContent = text;
+}
+
+function setPlayerCount(count) {
+  STATE.playerCount = count;
+  STATE.round = 1;
+  STATE.roundTimeElapsed = 0;
+  STATE.inMatch = false;
+  STATE.resultLocked = false;
+  fighters = [];
+  resetSelections();
+  resetWins();
+  pressedKeys.clear();
+  overlay.classList.add("hidden");
+  setMessage("Touch gloves and get ready.");
+  renderHudShell();
+  updateSelectionUI();
+  showScreen("select");
+}
+
+function getSpawnPositions(count) {
+  if (count === 3) {
+    return [100, 596, 1008];
+  }
+
+  return [290, 902];
+}
+
+function createFighter(character, slotId, startX) {
   return {
     character,
-    player,
+    slotId,
+    isAI: isAISlot(slotId),
     x: startX,
     y: 545,
     width: 88,
     height: 140,
     vx: 0,
     vy: 0,
-    facing: player === "player1" ? 1 : -1,
+    facing: slotId === "player2" ? -1 : 1,
     health: character.maxHealth,
     blockReduction: character.blockReduction,
     isBlocking: false,
@@ -632,8 +901,56 @@ function createFighter(character, player, startX) {
     specialCooldown: 0,
     onGround: true,
     afterImage: 0,
-    hitFlash: 0
+    hitFlash: 0,
+    aiDecisionTimer: 0,
+    aiJumpCooldown: 0
   };
+}
+
+function beginMatch() {
+  const slotIds = getRequiredSlotIds();
+  if (slotIds.some((slotId) => !STATE.selections[slotId])) {
+    return;
+  }
+
+  const positions = getSpawnPositions(slotIds.length);
+  fighters = slotIds.map((slotId, index) => createFighter(STATE.selections[slotId], slotId, positions[index]));
+  STATE.inMatch = true;
+  STATE.resultLocked = false;
+  STATE.roundTimeElapsed = 0;
+  setMessage(
+    STATE.playerCount === 1
+      ? "Bell rings. Beat the computer."
+      : STATE.playerCount === 3
+        ? "Three fighters enter. Only one leaves standing."
+        : "Bell rings. Fight!"
+  );
+  lastTimestamp = 0;
+  renderHudShell();
+  renderControlCards();
+  updateHud();
+  overlay.classList.add("hidden");
+  showScreen("match");
+  playSound("bell");
+  if (!loopActive) {
+    loopActive = true;
+    requestAnimationFrame(gameLoop);
+  }
+}
+
+function resetForRematch() {
+  STATE.round += 1;
+  roundLabel.textContent = `Round ${STATE.round}`;
+  beginMatch();
+}
+
+function backToSelection() {
+  STATE.inMatch = false;
+  fighters = [];
+  overlay.classList.add("hidden");
+  showScreen("select");
+  updateSelectionUI();
+  playSound("back");
 }
 
 function roundedRectPath(x, y, width, height, radius) {
@@ -661,77 +978,138 @@ function strokeRoundedRect(x, y, width, height, radius) {
   ctx.stroke();
 }
 
-function beginMatch() {
-  fighters = [
-    createFighter(STATE.selections.player1, "player1", 330),
-    createFighter(STATE.selections.player2, "player2", 950)
-  ];
-  STATE.inMatch = true;
-  STATE.resultLocked = false;
-  STATE.roundTimeElapsed = 0;
-  STATE.message = "Bell rings. Fight!";
-  lastTimestamp = 0;
-  updateHud();
-  overlay.classList.add("hidden");
-  showScreen("match");
-  playSound("bell");
-  if (!loopActive) {
-    loopActive = true;
-    requestAnimationFrame(gameLoop);
-  }
+function isAliveFighter(fighter) {
+  return Boolean(fighter && fighter.health > 0);
 }
 
-function resetForRematch() {
-  STATE.round += 1;
-  roundLabel.textContent = `Round ${STATE.round}`;
-  beginMatch();
+function getFighterCenter(fighter) {
+  return fighter.x + fighter.width / 2;
 }
 
-function backToSelection() {
-  STATE.inMatch = false;
-  overlay.classList.add("hidden");
-  showScreen("select");
-  updateSelectionUI();
-  playSound("back");
+function getLivingOpponents(fighter) {
+  return fighters.filter((other) => other !== fighter && isAliveFighter(other));
 }
 
-function updateHud() {
-  if (fighters.length !== 2) {
-    return;
+function getNearestOpponent(fighter) {
+  const opponents = getLivingOpponents(fighter);
+  if (!opponents.length) {
+    return null;
   }
 
-  const [fighter1, fighter2] = fighters;
-  hud.player1Name.textContent = fighter1.character.name;
-  hud.player2Name.textContent = fighter2.character.name;
-  hud.player1Health.style.width = `${Math.max(0, (fighter1.health / fighter1.character.maxHealth) * 100)}%`;
-  hud.player2Health.style.width = `${Math.max(0, (fighter2.health / fighter2.character.maxHealth) * 100)}%`;
-  hud.player1Special.textContent = fighter1.specialCooldown <= 0 ? "Special ready" : `Special in ${fighter1.specialCooldown.toFixed(1)}s`;
-  hud.player2Special.textContent = fighter2.specialCooldown <= 0 ? "Special ready" : `Special in ${fighter2.specialCooldown.toFixed(1)}s`;
-  hud.player1Score.textContent = `Wins: ${STATE.wins.player1}`;
-  hud.player2Score.textContent = `Wins: ${STATE.wins.player2}`;
-  roundLabel.textContent = `Round ${STATE.round}`;
-  timerLabel.textContent = `Time ${formatElapsedTime(STATE.roundTimeElapsed)} / 3:00`;
-  messageBanner.textContent = STATE.message;
+  return opponents.reduce((closest, contender) => {
+    const closestDistance = Math.abs(getFighterCenter(closest) - getFighterCenter(fighter));
+    const contenderDistance = Math.abs(getFighterCenter(contender) - getFighterCenter(fighter));
+    return contenderDistance < closestDistance ? contender : closest;
+  });
 }
 
-function setMessage(text) {
-  STATE.message = text;
-  messageBanner.textContent = text;
+function getSortedOpponents(fighter) {
+  return getLivingOpponents(fighter).sort(
+    (left, right) => Math.abs(getFighterCenter(left) - getFighterCenter(fighter)) - Math.abs(getFighterCenter(right) - getFighterCenter(fighter))
+  );
+}
+
+function getHumanInputState(fighter) {
+  const controls = KEYS[fighter.slotId];
+  return {
+    left: isPressed(controls.left),
+    right: isPressed(controls.right),
+    jump: isPressed(controls.jump),
+    block: isPressed(controls.block)
+  };
+}
+
+function getAIInputState(fighter, delta) {
+  const input = {
+    left: false,
+    right: false,
+    jump: false,
+    block: false
+  };
+  const target = getNearestOpponent(fighter);
+  fighter.aiDecisionTimer = Math.max(0, fighter.aiDecisionTimer - delta);
+  fighter.aiJumpCooldown = Math.max(0, fighter.aiJumpCooldown - delta);
+
+  if (!target) {
+    return input;
+  }
+
+  const diff = getFighterCenter(target) - getFighterCenter(fighter);
+  const distance = Math.abs(diff);
+  const lowHealth = fighter.health < fighter.character.maxHealth * 0.28;
+  const underPressure = target.currentAttack && distance < target.currentAttack.range + 48 && target.attackTimer <= target.currentAttack.duration * 0.72;
+
+  if (underPressure && Math.random() < 0.82) {
+    input.block = true;
+  }
+
+  if (fighter.attackTimer <= 0 && fighter.stunTimer <= 0) {
+    if (lowHealth && distance < 140) {
+      if (diff < 0) {
+        input.right = true;
+      } else {
+        input.left = true;
+      }
+    } else if (distance > 155) {
+      if (diff < 0) {
+        input.left = true;
+      } else {
+        input.right = true;
+      }
+    } else if (distance < 82 && Math.random() < 0.22) {
+      if (diff < 0) {
+        input.right = true;
+      } else {
+        input.left = true;
+      }
+    }
+  }
+
+  if (fighter.onGround && fighter.aiJumpCooldown <= 0 && !input.block && distance > 100 && !target.onGround && Math.random() < 0.18) {
+    input.jump = true;
+    fighter.aiJumpCooldown = 0.85;
+  }
+
+  if (fighter.aiDecisionTimer <= 0 && fighter.attackCooldown <= 0 && fighter.stunTimer <= 0 && !input.block) {
+    if (distance <= 128) {
+      const roll = Math.random();
+      if (fighter.specialCooldown <= 0 && roll > 0.78) {
+        attemptAttack(fighter, "special");
+      } else if (roll > 0.46) {
+        attemptAttack(fighter, "hook");
+      } else {
+        attemptAttack(fighter, "jab");
+      }
+      fighter.aiDecisionTimer = 0.2 + Math.random() * 0.18;
+    } else if (distance <= 176 && fighter.specialCooldown <= 0 && Math.random() < 0.34) {
+      attemptAttack(fighter, "special");
+      fighter.aiDecisionTimer = 0.3 + Math.random() * 0.18;
+    }
+  }
+
+  return input;
 }
 
 function handleInputs(delta) {
-  fighters.forEach((fighter, index) => {
-    const controls = index === 0 ? KEYS.player1 : KEYS.player2;
+  fighters.forEach((fighter) => {
+    if (!isAliveFighter(fighter)) {
+      fighter.isBlocking = false;
+      fighter.vx *= 0.85;
+      return;
+    }
+
+    const input = fighter.isAI ? getAIInputState(fighter, delta) : getHumanInputState(fighter);
 
     if (fighter.stunTimer > 0) {
+      fighter.isBlocking = false;
       fighter.vx *= 0.9;
       return;
     }
 
-    fighter.isBlocking = isPressed(controls.block);
+    fighter.isBlocking = input.block;
 
-    const moveLeft = isPressed(controls.left);
-    const moveRight = isPressed(controls.right);
+    const moveLeft = input.left;
+    const moveRight = input.right;
     const speedMultiplier = fighter.speedBuffTimer > 0 ? 1.35 : 1;
     const targetSpeed = fighter.character.speed * speedMultiplier;
 
@@ -745,64 +1123,11 @@ function handleInputs(delta) {
       }
     }
 
-    if (isPressed(controls.jump) && fighter.onGround) {
+    if (input.jump && fighter.onGround) {
       fighter.vy = -fighter.character.jump;
       fighter.onGround = false;
     }
   });
-}
-
-function attemptAttack(fighter, opponent, type) {
-  if (!STATE.inMatch || fighter.attackCooldown > 0 || fighter.stunTimer > 0) {
-    return;
-  }
-
-  const isSpecial = type === "special";
-  if (isSpecial && fighter.specialCooldown > 0) {
-    return;
-  }
-
-  let attack;
-  if (type === "jab") {
-    attack = { name: "Jab", damage: fighter.character.jabDamage, range: 120, duration: 0.18, push: 170, stun: 0 };
-  } else if (type === "hook") {
-    attack = { name: "Hook", damage: fighter.character.hookDamage, range: 140, duration: 0.28, push: 240, stun: 0.16 };
-  } else {
-    attack = createSpecialAttack(fighter);
-  }
-
-  fighter.currentAttack = attack;
-  fighter.attackTimer = attack.duration;
-  fighter.attackCooldown = type === "jab" ? 0.22 : type === "hook" ? 0.48 : 0.8;
-  if (type === "special") {
-    fighter.specialCooldown = fighter.character.specialCooldown;
-  }
-
-  if (!(type === "special" && attack.selfBuff === "shield")) {
-    playSound(type === "special" ? "special" : type);
-  }
-
-  if (attack.selfBuff === "dash") {
-    fighter.speedBuffTimer = 0.9;
-    fighter.vx = fighter.facing * 620;
-    fighter.afterImage = 0.45;
-  }
-
-  if (attack.selfBuff === "shield") {
-    fighter.shieldTimer = 2.2;
-    fighter.health = Math.min(fighter.character.maxHealth, fighter.health + 8);
-    setMessage(`${fighter.character.name} activates ${fighter.character.abilityName}!`);
-    playSound("shield");
-    return;
-  }
-
-  if (attack.multiHit) {
-    attack.hitsLeft = 4;
-    attack.hitInterval = 0.11;
-    attack.intervalTimer = 0.02;
-  }
-
-  tryHit(fighter, opponent);
 }
 
 function createSpecialAttack(fighter) {
@@ -836,16 +1161,6 @@ function createSpecialAttack(fighter) {
         stun: 0,
         selfBuff: "shield"
       };
-    case "flurry":
-      return {
-        name: fighter.character.abilityName,
-        damage: 5,
-        range: 132,
-        duration: 0.55,
-        push: 135,
-        stun: 0.1,
-        multiHit: true
-      };
     default:
       return {
         name: "Special",
@@ -858,24 +1173,71 @@ function createSpecialAttack(fighter) {
   }
 }
 
-function tryHit(attacker, defender) {
-  if (!attacker.currentAttack || defender.invulnerableTimer > 0) {
+function attemptAttack(fighter, type) {
+  if (!STATE.inMatch || !isAliveFighter(fighter) || fighter.attackCooldown > 0 || fighter.stunTimer > 0) {
     return;
   }
 
-  const distance = Math.abs((attacker.x + attacker.width / 2) - (defender.x + defender.width / 2));
-  const facingCorrectly =
-    attacker.facing === 1
-      ? defender.x >= attacker.x - 20
-      : defender.x + defender.width <= attacker.x + attacker.width + 20;
+  const isSpecial = type === "special";
+  if (isSpecial && fighter.specialCooldown > 0) {
+    return;
+  }
+
+  let attack;
+  if (type === "jab") {
+    attack = { name: "Jab", damage: fighter.character.jabDamage, range: 120, duration: 0.18, push: 170, stun: 0, connected: false };
+  } else if (type === "hook") {
+    attack = { name: "Hook", damage: fighter.character.hookDamage, range: 140, duration: 0.28, push: 240, stun: 0.16, connected: false };
+  } else {
+    attack = { ...createSpecialAttack(fighter), connected: false };
+  }
+
+  fighter.currentAttack = attack;
+  fighter.attackTimer = attack.duration;
+  fighter.attackCooldown = type === "jab" ? 0.22 : type === "hook" ? 0.48 : 0.8;
+  if (type === "special") {
+    fighter.specialCooldown = fighter.character.specialCooldown;
+  }
+
+  if (!(type === "special" && attack.selfBuff === "shield")) {
+    playSound(type === "special" ? "special" : type);
+  }
+
+  if (attack.selfBuff === "dash") {
+    fighter.speedBuffTimer = 0.9;
+    fighter.vx = fighter.facing * 620;
+    fighter.afterImage = 0.45;
+  }
+
+  if (attack.selfBuff === "shield") {
+    fighter.shieldTimer = 2.2;
+    fighter.health = Math.min(fighter.character.maxHealth, fighter.health + 8);
+    setMessage(`${fighter.character.name} activates ${fighter.character.abilityName}!`);
+    playSound("shield");
+    return;
+  }
+
+  tryHitOpponents(fighter);
+}
+
+function tryHit(attacker, defender) {
+  if (!attacker.currentAttack || !isAliveFighter(defender) || defender.invulnerableTimer > 0) {
+    return false;
+  }
+
+  const distance = Math.abs(getFighterCenter(attacker) - getFighterCenter(defender));
+  const facingCorrectly = attacker.facing === 1
+    ? defender.x >= attacker.x - 20
+    : defender.x + defender.width <= attacker.x + attacker.width + 20;
 
   if (distance > attacker.currentAttack.range || !facingCorrectly) {
-    return;
+    return false;
   }
 
   let damage = attacker.currentAttack.damage;
   const push = attacker.currentAttack.push;
   let stun = attacker.currentAttack.stun;
+  const defenderWasAlive = defender.health > 0;
 
   if (defender.isBlocking) {
     damage *= 1 - defender.blockReduction;
@@ -901,37 +1263,70 @@ function tryHit(attacker, defender) {
   }
 
   if (damage > 0) {
-    setMessage(`${attacker.character.name} lands ${attacker.currentAttack.name}!`);
+    if (defenderWasAlive && defender.health <= 0) {
+      setMessage(`${attacker.character.name} knocks out ${defender.character.name}!`);
+    } else {
+      setMessage(`${attacker.character.name} lands ${attacker.currentAttack.name}!`);
+    }
   }
 
   attacker.currentAttack.connected = true;
-  defender.invulnerableTimer = attacker.currentAttack.multiHit ? 0.04 : 0.14;
+  defender.invulnerableTimer = 0.14;
+  return true;
+}
+
+function tryHitOpponents(attacker) {
+  for (const defender of getSortedOpponents(attacker)) {
+    if (tryHit(attacker, defender)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function resolveAttacks(delta) {
-  const [fighter1, fighter2] = fighters;
-
-  fighters.forEach((fighter, index) => {
-    const opponent = index === 0 ? fighter2 : fighter1;
-    if (!fighter.currentAttack) {
+  fighters.forEach((fighter) => {
+    if (!fighter.currentAttack || !isAliveFighter(fighter)) {
+      if (!isAliveFighter(fighter)) {
+        fighter.currentAttack = null;
+      }
       return;
     }
 
     fighter.attackTimer -= delta;
     if (fighter.attackTimer > 0) {
-      if (fighter.currentAttack.multiHit) {
-        fighter.currentAttack.intervalTimer -= delta;
-        if (fighter.currentAttack.intervalTimer <= 0 && fighter.currentAttack.hitsLeft > 0) {
-          fighter.currentAttack.intervalTimer = fighter.currentAttack.hitInterval;
-          fighter.currentAttack.hitsLeft -= 1;
-          tryHit(fighter, opponent);
-        }
-      } else if (!fighter.currentAttack.connected && fighter.attackTimer <= fighter.currentAttack.duration * 0.6) {
-        tryHit(fighter, opponent);
+      if (!fighter.currentAttack.connected && fighter.attackTimer <= fighter.currentAttack.duration * 0.6) {
+        tryHitOpponents(fighter);
       }
     } else {
       fighter.currentAttack = null;
     }
+  });
+}
+
+function resolveFighterSpacing() {
+  const livingFighters = fighters.filter(isAliveFighter);
+
+  for (let i = 0; i < livingFighters.length; i += 1) {
+    for (let j = i + 1; j < livingFighters.length; j += 1) {
+      const fighterA = livingFighters[i];
+      const fighterB = livingFighters[j];
+      const distance = getFighterCenter(fighterB) - getFighterCenter(fighterA);
+      const absDistance = Math.abs(distance);
+      const minGap = 74;
+
+      if (absDistance < minGap) {
+        const direction = absDistance === 0 ? 1 : Math.sign(distance);
+        const push = (minGap - absDistance) / 2;
+        fighterA.x -= push * direction;
+        fighterB.x += push * direction;
+      }
+    }
+  }
+
+  fighters.forEach((fighter) => {
+    fighter.x = Math.max(80, Math.min(canvas.width - fighter.width - 80, fighter.x));
   });
 }
 
@@ -946,6 +1341,19 @@ function updateFighters(delta) {
     fighter.speedBuffTimer = Math.max(0, fighter.speedBuffTimer - delta);
     fighter.afterImage = Math.max(0, fighter.afterImage - delta);
     fighter.hitFlash = Math.max(0, fighter.hitFlash - delta);
+
+    if (!isAliveFighter(fighter)) {
+      fighter.currentAttack = null;
+      fighter.attackTimer = 0;
+      fighter.isBlocking = false;
+      fighter.vx *= 0.84;
+      fighter.x += fighter.vx * delta;
+      fighter.x = Math.max(80, Math.min(canvas.width - fighter.width - 80, fighter.x));
+      fighter.y = 545;
+      fighter.vy = 0;
+      fighter.onGround = true;
+      return;
+    }
 
     fighter.vy += gravity * delta;
     fighter.x += fighter.vx * delta;
@@ -964,34 +1372,57 @@ function updateFighters(delta) {
     fighter.vx *= fighter.isBlocking ? 0.84 : 0.9;
   });
 
-  const [fighter1, fighter2] = fighters;
-  if (fighter1 && fighter2) {
-    const fighter1Center = fighter1.x + fighter1.width / 2;
-    const fighter2Center = fighter2.x + fighter2.width / 2;
-    fighter1.facing = fighter1Center <= fighter2Center ? 1 : -1;
-    fighter2.facing = fighter2Center >= fighter1Center ? -1 : 1;
-  }
+  resolveFighterSpacing();
+
+  fighters.forEach((fighter) => {
+    const target = getNearestOpponent(fighter);
+    if (!target) {
+      return;
+    }
+
+    fighter.facing = getFighterCenter(fighter) <= getFighterCenter(target) ? 1 : -1;
+  });
+}
+
+function concludeDraw(copy) {
+  STATE.resultLocked = true;
+  STATE.inMatch = false;
+  STATE.roundTimeElapsed = STATE.roundTimeLimit;
+  overlayTitle.textContent = "Draw";
+  overlayCopy.textContent = copy;
+  setMessage("Draw! Time is up.");
+  playSound("draw");
+  updateHud();
+  overlay.classList.remove("hidden");
 }
 
 function checkWinner() {
-  if (STATE.resultLocked || fighters.length !== 2) {
+  if (STATE.resultLocked) {
     return;
   }
 
-  const [fighter1, fighter2] = fighters;
-  if (fighter1.health <= 0 || fighter2.health <= 0) {
-    STATE.resultLocked = true;
-    STATE.inMatch = false;
-    const winnerKey = fighter1.health > fighter2.health ? "player1" : "player2";
-    const winner = winnerKey === "player1" ? fighter1 : fighter2;
-    STATE.wins[winnerKey] += 1;
-    overlayTitle.textContent = `${winner.character.name} wins by KO`;
-    overlayCopy.textContent = `${winner.character.abilityName} shook the whole schoolyard.`;
-    setMessage("KO!");
-    playSound("ko");
-    updateHud();
-    overlay.classList.remove("hidden");
+  const aliveFighters = fighters.filter(isAliveFighter);
+  if (aliveFighters.length > 1) {
+    return;
   }
+
+  if (aliveFighters.length === 0) {
+    concludeDraw("Everyone is down when the bell sounds.");
+    return;
+  }
+
+  const winner = aliveFighters[0];
+  STATE.resultLocked = true;
+  STATE.inMatch = false;
+  STATE.wins[winner.slotId] += 1;
+  overlayTitle.textContent = `${winner.character.name} wins by KO`;
+  overlayCopy.textContent = STATE.playerCount === 3
+    ? `${winner.character.name} is the last one left standing in the schoolyard.`
+    : `${winner.character.abilityName} shook the whole schoolyard.`;
+  setMessage(`${winner.character.name} wins!`);
+  playSound("ko");
+  updateHud();
+  overlay.classList.remove("hidden");
 }
 
 function checkDraw() {
@@ -1000,15 +1431,11 @@ function checkDraw() {
   }
 
   if (STATE.roundTimeElapsed >= STATE.roundTimeLimit) {
-    STATE.resultLocked = true;
-    STATE.inMatch = false;
-    STATE.roundTimeElapsed = STATE.roundTimeLimit;
-    overlayTitle.textContent = "Draw";
-    overlayCopy.textContent = "Three minutes are up. The bell saves both fighters.";
-    setMessage("Draw! Time is up.");
-    playSound("draw");
-    updateHud();
-    overlay.classList.remove("hidden");
+    concludeDraw(
+      STATE.playerCount === 3
+        ? "Three minutes are up. The remaining fighters survive the bell."
+        : "Three minutes are up. The bell saves both fighters."
+    );
   }
 }
 
@@ -1037,11 +1464,11 @@ function drawSchoolBackdrop() {
     return;
   }
 
-  const overlay = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  overlay.addColorStop(0, "rgba(7, 15, 28, 0.26)");
-  overlay.addColorStop(0.45, "rgba(7, 15, 28, 0.10)");
-  overlay.addColorStop(1, "rgba(7, 15, 28, 0.54)");
-  ctx.fillStyle = overlay;
+  const overlayGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  overlayGradient.addColorStop(0, "rgba(7, 15, 28, 0.26)");
+  overlayGradient.addColorStop(0.45, "rgba(7, 15, 28, 0.10)");
+  overlayGradient.addColorStop(1, "rgba(7, 15, 28, 0.54)");
+  ctx.fillStyle = overlayGradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
@@ -1165,6 +1592,31 @@ function drawTeacherHeadPhoto(headX, headY, character) {
   return true;
 }
 
+function drawStars(x, y, timer) {
+  const points = [
+    { x: x - 22, y: y + Math.sin(timer * 20) * 5 },
+    { x, y: y - 10 + Math.cos(timer * 22) * 5 },
+    { x: x + 22, y: y + Math.sin(timer * 18 + 1) * 5 }
+  ];
+
+  ctx.fillStyle = "#ffe16b";
+  points.forEach((point) => {
+    ctx.beginPath();
+    ctx.moveTo(point.x, point.y - 8);
+    ctx.lineTo(point.x + 4, point.y - 2);
+    ctx.lineTo(point.x + 10, point.y - 1);
+    ctx.lineTo(point.x + 5, point.y + 4);
+    ctx.lineTo(point.x + 6, point.y + 10);
+    ctx.lineTo(point.x, point.y + 7);
+    ctx.lineTo(point.x - 6, point.y + 10);
+    ctx.lineTo(point.x - 5, point.y + 4);
+    ctx.lineTo(point.x - 10, point.y - 1);
+    ctx.lineTo(point.x - 4, point.y - 2);
+    ctx.closePath();
+    ctx.fill();
+  });
+}
+
 function drawFighter(fighter) {
   const appearance = fighter.character;
   const build = appearance.build || 1;
@@ -1207,8 +1659,13 @@ function drawFighter(fighter) {
     rearHandY = headY + 6;
   }
 
+  ctx.save();
+  if (!isAliveFighter(fighter)) {
+    ctx.globalAlpha = 0.38;
+  }
+
   if (fighter.afterImage > 0) {
-    ctx.globalAlpha = 0.16;
+    ctx.globalAlpha = isAliveFighter(fighter) ? 0.16 : 0.1;
     ctx.fillStyle = trimColor;
     ctx.beginPath();
     ctx.ellipse(centerX - fighter.facing * 16, waistY - 12, 26, 48, 0, 0, Math.PI * 2);
@@ -1216,7 +1673,7 @@ function drawFighter(fighter) {
     ctx.beginPath();
     ctx.ellipse(headX - fighter.facing * 16, headY + 5, 22, 26, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = isAliveFighter(fighter) ? 1 : 0.38;
   }
 
   if (fighter.shieldTimer > 0) {
@@ -1354,40 +1811,17 @@ function drawFighter(fighter) {
   drawGlove(rearHandX, rearHandY, trimColor, fighter.facing * -0.2, 0.92);
   drawGlove(frontHandX, frontHandY, trimColor, fighter.facing * 0.08, fighter.currentAttack ? 1.08 : 1);
 
-  if (fighter.isBlocking) {
+  if (fighter.isBlocking && isAliveFighter(fighter)) {
     ctx.strokeStyle = "rgba(255,255,255,0.58)";
     ctx.lineWidth = 3;
     strokeRoundedRect(fighter.x + 6, baseY + 8, fighter.width - 12, fighter.height - 14, 24);
   }
 
-  if (fighter.stunTimer > 0.2) {
+  if (fighter.stunTimer > 0.2 && isAliveFighter(fighter)) {
     drawStars(centerX, baseY - 12, fighter.stunTimer);
   }
-}
 
-function drawStars(x, y, timer) {
-  const points = [
-    { x: x - 22, y: y + Math.sin(timer * 20) * 5 },
-    { x, y: y - 10 + Math.cos(timer * 22) * 5 },
-    { x: x + 22, y: y + Math.sin(timer * 18 + 1) * 5 }
-  ];
-
-  ctx.fillStyle = "#ffe16b";
-  points.forEach((point) => {
-    ctx.beginPath();
-    ctx.moveTo(point.x, point.y - 8);
-    ctx.lineTo(point.x + 4, point.y - 2);
-    ctx.lineTo(point.x + 10, point.y - 1);
-    ctx.lineTo(point.x + 5, point.y + 4);
-    ctx.lineTo(point.x + 6, point.y + 10);
-    ctx.lineTo(point.x, point.y + 7);
-    ctx.lineTo(point.x - 6, point.y + 10);
-    ctx.lineTo(point.x - 5, point.y + 4);
-    ctx.lineTo(point.x - 10, point.y - 1);
-    ctx.lineTo(point.x - 4, point.y - 2);
-    ctx.closePath();
-    ctx.fill();
-  });
+  ctx.restore();
 }
 
 function drawArena() {
@@ -1398,7 +1832,11 @@ function drawArena() {
     ctx.ellipse(fighter.x + fighter.width / 2, 690, 70, 20, 0, 0, Math.PI * 2);
     ctx.fill();
   });
-  fighters.forEach(drawFighter);
+
+  fighters
+    .slice()
+    .sort((left, right) => left.y - right.y)
+    .forEach(drawFighter);
 }
 
 function gameLoop(timestamp) {
@@ -1433,34 +1871,31 @@ function handleKeyDown(event) {
 
   if (isGameplayKey(key)) {
     event.preventDefault();
-    ensureAudio();
+    void requestAudioUnlock();
   }
 
   pressedKeys.add(key);
 
-  if (!STATE.inMatch || fighters.length !== 2) {
+  if (!STATE.inMatch) {
     return;
   }
 
-  const [fighter1, fighter2] = fighters;
-  if (matchesKey(KEYS.player1.jab, key)) {
-    attemptAttack(fighter1, fighter2, "jab");
-  }
-  if (matchesKey(KEYS.player1.hook, key)) {
-    attemptAttack(fighter1, fighter2, "hook");
-  }
-  if (matchesKey(KEYS.player1.special, key)) {
-    attemptAttack(fighter1, fighter2, "special");
-  }
-  if (matchesKey(KEYS.player2.jab, key)) {
-    attemptAttack(fighter2, fighter1, "jab");
-  }
-  if (matchesKey(KEYS.player2.hook, key)) {
-    attemptAttack(fighter2, fighter1, "hook");
-  }
-  if (matchesKey(KEYS.player2.special, key)) {
-    attemptAttack(fighter2, fighter1, "special");
-  }
+  fighters.forEach((fighter) => {
+    if (fighter.isAI || !isAliveFighter(fighter)) {
+      return;
+    }
+
+    const controls = KEYS[fighter.slotId];
+    if (matchesKey(controls.jab, key)) {
+      attemptAttack(fighter, "jab");
+    }
+    if (matchesKey(controls.hook, key)) {
+      attemptAttack(fighter, "hook");
+    }
+    if (matchesKey(controls.special, key)) {
+      attemptAttack(fighter, "special");
+    }
+  });
 }
 
 function handleKeyUp(event) {
@@ -1468,28 +1903,52 @@ function handleKeyUp(event) {
 }
 
 function init() {
-  renderRoster();
   updateSelectionUI();
+  renderHudShell();
   showScreen("splash");
   updateSoundToggleUI();
 
   enterButton.addEventListener("click", async () => {
     await requestAudioUnlock();
     playSound("menu-open");
-    showScreen("select");
+    showScreen("mode");
   });
+
+  modeBackButton.addEventListener("click", async () => {
+    await requestAudioUnlock();
+    playSound("back");
+    showScreen("splash");
+  });
+
+  modeButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      await requestAudioUnlock();
+      playSound("select");
+      setPlayerCount(Number(button.dataset.playerCount));
+    });
+  });
+
+  changeModeButton.addEventListener("click", async () => {
+    await requestAudioUnlock();
+    playSound("back");
+    showScreen("mode");
+  });
+
   startMatchButton.addEventListener("click", async () => {
     await requestAudioUnlock();
     beginMatch();
   });
+
   rematchButton.addEventListener("click", async () => {
     await requestAudioUnlock();
     resetForRematch();
   });
+
   backButton.addEventListener("click", async () => {
     await requestAudioUnlock();
     backToSelection();
   });
+
   soundToggleButton.addEventListener("click", toggleSound);
   window.addEventListener("pointerdown", () => {
     void requestAudioUnlock();

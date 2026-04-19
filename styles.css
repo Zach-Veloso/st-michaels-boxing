@@ -97,7 +97,6 @@ button {
 .meter-label,
 .score-label,
 .timer-label,
-.selection-footer p,
 .splash-kicker {
   margin: 0;
   color: var(--gold-soft);
@@ -108,7 +107,6 @@ button {
 
 .subhead,
 .controls-copy,
-.selection-footer p,
 .tip-card p,
 .message-banner,
 .splash-copy,
@@ -118,7 +116,7 @@ button {
 
 .screen-frame {
   position: relative;
-  min-height: 820px;
+  min-height: 860px;
   border: 1px solid var(--line);
   border-radius: 26px;
   overflow: hidden;
@@ -130,7 +128,7 @@ button {
 
 .screen {
   display: none;
-  min-height: 820px;
+  min-height: 860px;
   position: relative;
   isolation: isolate;
 }
@@ -145,6 +143,7 @@ button {
 }
 
 #splash-screen::before,
+#mode-screen::before,
 #select-screen::before {
   content: "";
   position: absolute;
@@ -169,6 +168,14 @@ button {
     url("./assets/st-michaels-building.jpg");
   background-size: auto, cover;
   background-position: center, 64% center;
+}
+
+#mode-screen::before {
+  background-image:
+    linear-gradient(180deg, rgba(7, 13, 24, 0.4), rgba(7, 13, 24, 0.82)),
+    url("./assets/st-michaels-building.jpg");
+  background-size: auto, cover;
+  background-position: center, center;
 }
 
 .splash-card {
@@ -250,16 +257,16 @@ button {
   padding: 28px 28px 0;
 }
 
-.selection-layout {
-  display: grid;
-  grid-template-columns: minmax(220px, 260px) 1fr minmax(220px, 260px);
-  gap: 18px;
-  padding: 24px 28px 0;
+.section-actions {
+  display: flex;
+  gap: 12px;
 }
 
 .selection-panel,
+.mode-card,
 .tip-card,
-.overlay-card {
+.overlay-card,
+.hud-player-card {
   border: 1px solid var(--line);
   border-radius: 22px;
   background:
@@ -273,10 +280,76 @@ button {
   padding: 18px;
 }
 
+.mode-card {
+  max-width: 860px;
+  margin: 90px auto;
+  padding: 34px;
+  text-align: center;
+}
+
+.mode-card h2 {
+  margin: 8px 0 0;
+  font-size: clamp(1.8rem, 4vw, 3.1rem);
+}
+
+.mode-copy,
+.select-subtitle {
+  margin: 12px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 28px 0 24px;
+}
+
+.mode-button {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  min-height: 180px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  text-align: left;
+  color: var(--text);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 60%),
+    var(--panel-soft);
+  box-shadow: var(--shadow);
+}
+
+.mode-button strong {
+  font-size: 1.35rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mode-button span {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.mode-button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+
+.selection-players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  padding: 24px 28px 0;
+}
+
 .player-preview {
   display: grid;
   place-items: center;
-  min-height: 260px;
+  min-height: 220px;
   margin: 14px 0 18px;
   border: 1px dashed rgba(255, 255, 255, 0.18);
   border-radius: 18px;
@@ -351,8 +424,9 @@ button {
 
 .roster-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 16px;
+  padding: 24px 28px 28px;
 }
 
 .fighter-card {
@@ -400,6 +474,7 @@ button {
 
 .card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: auto;
 }
@@ -421,31 +496,42 @@ button {
   color: #160c0d;
 }
 
-.selection-footer {
-  padding: 18px 28px 28px;
+.picker-button.player3 {
+  background: linear-gradient(135deg, rgba(143, 230, 183, 0.95), rgba(39, 176, 127, 0.95));
+  color: #0c1b16;
+}
+
+.picker-button.ai {
+  background: linear-gradient(135deg, rgba(211, 164, 255, 0.95), rgba(117, 109, 255, 0.92));
+  color: #110d1a;
+}
+
+.picker-button.selected {
+  outline: 2px solid rgba(255, 255, 255, 0.45);
+  outline-offset: 2px;
 }
 
 .hud {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto;
   gap: 18px;
   padding: 24px 24px 12px;
-  align-items: end;
+  align-items: start;
 }
 
-.hud-column {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.hud-players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
 }
 
-.hud-column.right {
-  text-align: right;
+.hud-player-card {
+  padding: 16px;
 }
 
 .hud-name {
-  margin: 0;
-  font-size: 1.15rem;
+  margin: 4px 0 8px;
+  font-size: 1.05rem;
   font-weight: 700;
 }
 
@@ -469,6 +555,7 @@ button {
 
 .hud-center {
   text-align: center;
+  min-width: 250px;
 }
 
 .timer-label {
@@ -534,7 +621,7 @@ button {
 
 .bottom-strip {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
   padding: 18px 24px 24px;
 }
@@ -549,19 +636,12 @@ button {
 }
 
 @media (max-width: 1120px) {
-  .selection-layout {
-    grid-template-columns: 1fr;
-  }
-
   .roster-grid,
   .bottom-strip,
-  .hud {
+  .hud,
+  .mode-grid,
+  .selection-players {
     grid-template-columns: 1fr;
-  }
-
-  .hud-column.right,
-  .hud-center {
-    text-align: left;
   }
 }
 
@@ -585,6 +665,8 @@ button {
     align-items: stretch;
   }
 
+  .section-actions,
+  .mode-grid,
   .roster-grid {
     grid-template-columns: 1fr;
   }

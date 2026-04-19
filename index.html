@@ -13,7 +13,7 @@
         <div>
           <p class="eyebrow">St. Michael's Prep School</p>
           <h1>St. Michael's Boxing</h1>
-          <p class="subhead">Two-player retro schoolyard showdown</p>
+          <p class="subhead">One to three player retro schoolyard showdown</p>
         </div>
         <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="true">Sound: On</button>
       </div>
@@ -37,70 +37,61 @@
         </div>
       </section>
 
+      <section id="mode-screen" class="screen">
+        <div class="mode-card">
+          <p class="eyebrow">Number of Players</p>
+          <h2>Choose the format</h2>
+          <p class="mode-copy">
+            Pick `1` for a solo match against the computer, `2` for local versus, or `3` for a full three-way staff showdown.
+          </p>
+
+          <div class="mode-grid" aria-label="Choose number of players">
+            <button class="mode-button" type="button" data-player-count="1">
+              <strong>1 Player</strong>
+              <span>You choose your teacher, then pick the AI opponent.</span>
+            </button>
+            <button class="mode-button" type="button" data-player-count="2">
+              <strong>2 Players</strong>
+              <span>The current head-to-head local match.</span>
+            </button>
+            <button class="mode-button" type="button" data-player-count="3">
+              <strong>3 Players</strong>
+              <span>Three fighters enter the school grounds at once.</span>
+            </button>
+          </div>
+
+          <button id="mode-back-button" class="secondary-button" type="button">Back to Splash</button>
+        </div>
+      </section>
+
       <section id="select-screen" class="screen">
         <div class="section-header">
           <div>
             <p class="eyebrow">Character Select</p>
             <h2>Choose the teachers</h2>
+            <p id="select-subtitle" class="select-subtitle">Pick the fighters for the next match.</p>
           </div>
-          <button id="start-match-button" class="primary-button" disabled>Start Match</button>
+          <div class="section-actions">
+            <button id="change-mode-button" class="secondary-button" type="button">Change Players</button>
+            <button id="start-match-button" class="primary-button" disabled>Start Match</button>
+          </div>
         </div>
 
-        <div class="selection-layout">
-          <aside class="selection-panel">
-            <h3>Player 1</h3>
-            <div id="player1-preview" class="player-preview empty">
-              <p>Choose a teacher</p>
-            </div>
-            <p class="controls-label">Controls</p>
-            <p class="controls-copy">Move `A/D`, Jump `W`, Jab `F`, Hook `G`, Block `S`, Special `H`</p>
-          </aside>
+        <div id="selection-players" class="selection-players" aria-label="Selected fighters"></div>
 
-          <section id="roster" class="roster-grid" aria-label="Teacher roster"></section>
+        <section id="roster" class="roster-grid" aria-label="Teacher roster"></section>
 
-          <aside class="selection-panel">
-            <h3>Player 2</h3>
-            <div id="player2-preview" class="player-preview empty">
-              <p>Choose a teacher</p>
-            </div>
-            <p class="controls-label">Controls</p>
-            <p class="controls-copy">Move `J/L` or `Arrow Left/Right`, Jump `I` or `Arrow Up`, Jab `N`, Hook `M`, Block `K` or `Arrow Down`, Special `U`</p>
-          </aside>
-        </div>
-
-        <div class="selection-footer">
-          <p>
-            The official school logo is now in the prototype, and the backgrounds avoid showing students or teachers.
-            The roster now uses Mr Thomas, Mr Brightman, and Mr Pears. Portraits are still stylised placeholders until you send approved staff photos.
-          </p>
-        </div>
       </section>
 
       <section id="match-screen" class="screen">
         <div class="hud">
-          <div class="hud-column left">
-            <p id="player1-name" class="hud-name">Player 1</p>
-            <div class="meter">
-              <div id="player1-health" class="meter-fill health"></div>
-            </div>
-            <p id="player1-special" class="meter-label">Special ready</p>
-            <p id="player1-score" class="score-label">Wins: 0</p>
-          </div>
+          <div id="hud-players" class="hud-players"></div>
 
           <div class="hud-center">
             <p class="eyebrow">Assembly Hall Arena</p>
             <h2 id="round-label">Round 1</h2>
             <p id="timer-label" class="timer-label">Time 0:00 / 3:00</p>
             <p id="message-banner" class="message-banner">Touch gloves and get ready.</p>
-          </div>
-
-          <div class="hud-column right">
-            <p id="player2-name" class="hud-name">Player 2</p>
-            <div class="meter">
-              <div id="player2-health" class="meter-fill health"></div>
-            </div>
-            <p id="player2-special" class="meter-label">Special ready</p>
-            <p id="player2-score" class="score-label">Wins: 0</p>
           </div>
         </div>
 
@@ -119,20 +110,7 @@
           </div>
         </div>
 
-        <div class="bottom-strip">
-          <div class="tip-card">
-            <h3>Player 1 Controls</h3>
-            <p>`A` / `D` move, `W` jump, `S` block, `F` jab, `G` hook, `H` special.</p>
-          </div>
-          <div class="tip-card">
-            <h3>Player 2 Controls</h3>
-            <p>`J` / `L` or arrow keys move, `I` jump, `K` block, `N` jab, `M` hook, `U` special.</p>
-          </div>
-          <div class="tip-card">
-            <h3>Round Rules</h3>
-            <p>KO wins instantly. If the round clock reaches `3:00`, the result is an automatic draw.</p>
-          </div>
-        </div>
+        <div id="controls-strip" class="bottom-strip"></div>
       </section>
     </main>
   </div>

@@ -1,6 +1,6 @@
 # St. Michael's Boxing
 
-A self-contained browser prototype for a two-player school-themed boxing game.
+A self-contained browser prototype for a one-to-three-player school-themed boxing game.
 
 ## Play now
 
@@ -21,15 +21,18 @@ Then visit `http://localhost:8000`.
 ## Current prototype features
 
 - Intro splash with the public St Michael's Prep School logo and school photo backgrounds
-- Character select for two local players
+- A player-count screen with `1 player`, `2 players`, or `3 players`
+- Character select that adapts for solo AI, local versus, or a three-way fight
 - Three named St Michael's staff fighters with different stats and special abilities
-- Two-player local controls, health bars, blocking, stun, KO, rematch flow, a 3-minute draw rule, and win tracking
+- A solo AI opponent mode, two-player local controls, a three-player mode, health bars, blocking, stun, KO, rematch flow, a 3-minute draw rule, and win tracking
 - School-photo arena backdrop with a softer, less pixel-heavy visual style
+- Built-in splash music and menu music generated in the browser
 
 ## Controls
 
 - Player 1: Move `A/D`, Jump `W`, Jab `F`, Hook `G`, Block `S`, Special `H`
 - Player 2: Move `J/L` or arrow keys, Jump `I` or `Arrow Up`, Jab `N`, Hook `M`, Block `K` or `Arrow Down`, Special `U`
+- Player 3: Move `C/B` or `4/6`, Jump `V` or `8`, Jab `Z` or `1`, Hook `R` or `2`, Block `X` or `5`, Special `T` or `3`
 
 ## Swapping in teacher photos later
 
