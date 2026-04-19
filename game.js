@@ -426,7 +426,7 @@ function getThemeForCurrentScreen() {
     return "splash";
   }
 
-  if (STATE.currentScreen === "mode" || STATE.currentScreen === "select") {
+  if (STATE.currentScreen === "mode" || STATE.currentScreen === "select" || STATE.currentScreen === "match") {
     return "lobby";
   }
 
