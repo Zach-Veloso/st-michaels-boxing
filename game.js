@@ -1054,29 +1054,15 @@ function renderSelectionPanels() {
   const slotIds = getRequiredSlotIds();
   selectionPlayers.innerHTML = slotIds.map((slotId) => {
     const meta = getSlotMeta(slotId);
-    const character = STATE.selections[slotId];
-    const emptyCopy = isAISlot(slotId) ? "Choose the computer opponent" : "Choose a teacher";
+    const playerLabel = PLAYER_SLOTS[slotId]?.label || meta.label;
 
     return `
       <article class="selection-panel">
-        <h3>${meta.label}</h3>
-        <div class="player-preview ${character ? "" : "empty"}">
-          ${character ? `
-            <div>
-              ${buildPortraitMarkup(character, "preview-badge")}
-              <p class="preview-name">${character.name}</p>
-              <p class="preview-style">${character.style}</p>
-              <p class="preview-ability"><strong>${character.abilityName}:</strong> ${character.abilityText}</p>
-            </div>
-          ` : `<p>${emptyCopy}</p>`}
-        </div>
-        <p class="controls-label">${isAISlot(slotId) ? "Fighter Type" : "Controls"}</p>
+        <h3>${playerLabel}</h3>
         <p class="controls-copy">${meta.controls}</p>
       </article>
     `;
   }).join("");
-
-  wirePortraitFrames(selectionPlayers);
 }
 
 function renderVenuePanel() {

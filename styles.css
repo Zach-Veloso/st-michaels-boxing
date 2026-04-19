@@ -466,6 +466,11 @@ button {
   padding: 18px;
 }
 
+.selection-panel .controls-copy {
+  margin: 10px 0 0;
+  line-height: 1.5;
+}
+
 .mode-card {
   max-width: 860px;
   margin: 90px auto;
