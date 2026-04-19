@@ -221,7 +221,6 @@ const DEFAULT_VENUE_ORDER = [
   "sports-pitch",
   "indoor-sports-hall",
   "pre-prep-exterior",
-  "front-drive",
   "manor-lawn",
   "playing-fields"
 ];
@@ -253,7 +252,7 @@ const STATE = {
 const VENUES = [
   {
     id: "sports-pitch",
-    label: "Sports Pitch",
+    label: "Astro Turf",
     imagePath: "./assets/venues/sports-pitch.jpeg",
     image: loadImage("./assets/venues/sports-pitch.jpeg"),
     focusX: 0.5,
@@ -273,14 +272,6 @@ const VENUES = [
     imagePath: "./assets/venues/pre-prep-exterior.jpeg",
     image: loadImage("./assets/venues/pre-prep-exterior.jpeg"),
     focusX: 0.52,
-    focusY: 0.48
-  },
-  {
-    id: "front-drive",
-    label: "Front Drive",
-    imagePath: "./assets/rounds/front-drive.jpg",
-    image: loadImage("./assets/rounds/front-drive.jpg"),
-    focusX: 0.56,
     focusY: 0.48
   },
   {
