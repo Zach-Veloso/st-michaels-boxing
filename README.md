@@ -23,9 +23,10 @@ Then visit `http://localhost:8000`.
 - Intro splash with the public St Michael's Prep School logo and school photo backgrounds
 - A player-count screen with `1 player`, `2 players`, or `3 players`
 - Character select that adapts for solo AI, local versus, or a three-way fight
+- A round-by-round venue picker so each of the three rounds can happen in a different place
 - Three named St Michael's staff fighters with different stats and special abilities
 - A solo AI opponent mode tuned to be more forgiving, two-player local controls, a three-player mode, health bars, blocking, stun, and three one-minute rounds with round scoring
-- Three different no-people school-photo backdrops so each round moves to a different part of the grounds
+- Three school-photo venue backdrops, including the sports pitch, indoor sports hall, and pre-prep exterior
 - Animated splash/menu presentation with looping music tracks in `assets/audio`
 
 ## Controls

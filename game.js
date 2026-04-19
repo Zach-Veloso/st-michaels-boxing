@@ -213,6 +213,8 @@ const MATCH_RULES = {
   roundTimeLimit: 60
 };
 
+const DEFAULT_ROUND_VENUES = ["sports-pitch", "indoor-sports-hall", "pre-prep-exterior"];
+
 const STATE = {
   currentScreen: "splash",
   playerCount: null,
@@ -228,6 +230,7 @@ const STATE = {
     player3: 0
   },
   round: 1,
+  roundVenues: [...DEFAULT_ROUND_VENUES],
   roundTimeLimit: MATCH_RULES.roundTimeLimit,
   roundTimeElapsed: 0,
   message: "Touch gloves and get ready.",
@@ -235,24 +238,30 @@ const STATE = {
   resultLocked: false
 };
 
-const ROUND_BACKDROPS = [
+const VENUES = [
   {
-    label: "East Wing",
-    image: loadImage("./assets/rounds/front-drive.jpg"),
-    focusX: 0.56,
-    focusY: 0.48
+    id: "sports-pitch",
+    label: "Sports Pitch",
+    image: loadImage("./assets/venues/sports-pitch.jpeg"),
+    photoFile: "sports-pitch.jpeg",
+    focusX: 0.5,
+    focusY: 0.5
   },
   {
-    label: "Manor Lawn",
-    image: loadImage("./assets/rounds/manor-lawn.jpg"),
+    id: "indoor-sports-hall",
+    label: "Indoor Sports Hall",
+    image: loadImage("./assets/venues/indoor-sports-hall.jpeg"),
+    photoFile: "indoor-sports-hall.jpeg",
     focusX: 0.5,
-    focusY: 0.48
+    focusY: 0.5
   },
   {
-    label: "Playing Fields",
-    image: loadImage("./assets/rounds/playing-fields.jpg"),
-    focusX: 0.5,
-    focusY: 0.45
+    id: "pre-prep-exterior",
+    label: "Pre-Prep Exterior",
+    image: loadImage("./assets/venues/pre-prep-exterior.jpeg"),
+    photoFile: "pre-prep-exterior.jpeg",
+    focusX: 0.52,
+    focusY: 0.48
   }
 ];
 
@@ -269,6 +278,7 @@ const screens = {
 
 const roster = document.getElementById("roster");
 const selectionPlayers = document.getElementById("selection-players");
+const venuePanel = document.getElementById("venue-panel");
 const selectSubtitle = document.getElementById("select-subtitle");
 const difficultyPanel = document.getElementById("difficulty-panel");
 const difficultyButtons = [...document.querySelectorAll(".difficulty-button")];
@@ -662,8 +672,20 @@ function formatElapsedTime(seconds) {
   return `${minutes}:${String(remainder).padStart(2, "0")}`;
 }
 
+function getVenueById(venueId) {
+  return VENUES.find((venue) => venue.id === venueId) || VENUES[0];
+}
+
+function getVenueImagePath(venue) {
+  return `./assets/venues/${venue.photoFile}`;
+}
+
+function getRoundVenueId(round = STATE.round) {
+  return STATE.roundVenues[Math.max(0, Math.min(MATCH_RULES.totalRounds - 1, round - 1))] || DEFAULT_ROUND_VENUES[0];
+}
+
 function getCurrentRoundBackdrop() {
-  return ROUND_BACKDROPS[Math.max(0, Math.min(ROUND_BACKDROPS.length - 1, STATE.round - 1))] || ROUND_BACKDROPS[0];
+  return getVenueById(getRoundVenueId());
 }
 
 function getRoundLabelText() {
@@ -731,6 +753,10 @@ function resetWins() {
   });
 }
 
+function resetRoundVenues() {
+  STATE.roundVenues = [...DEFAULT_ROUND_VENUES];
+}
+
 function startSeries() {
   STATE.round = 1;
   STATE.roundTimeElapsed = 0;
@@ -794,6 +820,67 @@ function renderSelectionPanels() {
   }).join("");
 
   wirePortraitFrames(selectionPlayers);
+}
+
+function renderVenuePanel() {
+  if (!venuePanel) {
+    return;
+  }
+
+  const roundCards = Array.from({ length: MATCH_RULES.totalRounds }, (_, index) => {
+    const roundNumber = index + 1;
+    const selectedVenue = getVenueById(getRoundVenueId(roundNumber));
+    const buttonsMarkup = VENUES.map((venue) => {
+      const isSelected = selectedVenue.id === venue.id;
+      return `
+        <button
+          class="venue-button${isSelected ? " selected" : ""}"
+          type="button"
+          data-round="${roundNumber}"
+          data-venue="${venue.id}"
+        >
+          <img class="venue-thumb" src="${getVenueImagePath(venue)}" alt="${venue.label}" />
+          <span>${venue.label}</span>
+        </button>
+      `;
+    }).join("");
+
+    return `
+      <article class="venue-round-card">
+        <p class="eyebrow">Round ${roundNumber}</p>
+        <h3>${selectedVenue.label}</h3>
+        <div class="venue-preview">
+          <img src="${getVenueImagePath(selectedVenue)}" alt="${selectedVenue.label} preview" />
+        </div>
+        <div class="venue-choice-grid">
+          ${buttonsMarkup}
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  venuePanel.innerHTML = `
+    <div class="venue-panel-header">
+      <div>
+        <p class="eyebrow">Choose the Venues</p>
+        <h3>Pick where each round happens</h3>
+      </div>
+      <p class="venue-panel-copy">Set the order for all three rounds. You can reuse the same place or mix them up.</p>
+    </div>
+    <div class="venue-round-grid">
+      ${roundCards}
+    </div>
+  `;
+
+  venuePanel.querySelectorAll(".venue-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      void requestAudioUnlock();
+      playSound("select");
+      const roundIndex = Number(button.dataset.round) - 1;
+      STATE.roundVenues[roundIndex] = button.dataset.venue;
+      renderVenuePanel();
+    });
+  });
 }
 
 function getSelectionSubtitle() {
@@ -886,6 +973,9 @@ function updateSelectionUI() {
   updateDifficultyUI();
   if (!slotIds.length) {
     selectionPlayers.innerHTML = "";
+    if (venuePanel) {
+      venuePanel.innerHTML = "";
+    }
     roster.innerHTML = "";
     controlsStrip.innerHTML = "";
     startMatchButton.disabled = true;
@@ -894,6 +984,7 @@ function updateSelectionUI() {
 
   selectSubtitle.textContent = getSelectionSubtitle();
   renderSelectionPanels();
+  renderVenuePanel();
   renderRoster();
   renderControlCards();
   startMatchButton.disabled = slotIds.some((slotId) => !STATE.selections[slotId]);
@@ -981,6 +1072,7 @@ function setPlayerCount(count) {
   fighters = [];
   resetSelections();
   resetWins();
+  resetRoundVenues();
   pressedKeys.clear();
   overlay.classList.add("hidden");
   setMessage("Three one-minute rounds. Touch gloves and get ready.");
