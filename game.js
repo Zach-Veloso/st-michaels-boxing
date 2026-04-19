@@ -346,8 +346,7 @@ const AUDIO = {
 };
 
 const MUSIC_TRACKS = {
-  splash: createMusicTrack("./assets/audio/title-theme.wav", 0.66),
-  lobby: createMusicTrack("./assets/audio/menu-theme.wav", 0.62)
+  main: createMusicTrack("./assets/audio/castle-theme.wav", 0.72)
 };
 
 function updateSoundToggleUI() {
@@ -422,12 +421,13 @@ async function unlockAudioFromGesture() {
 }
 
 function getThemeForCurrentScreen() {
-  if (STATE.currentScreen === "splash") {
-    return "splash";
-  }
-
-  if (STATE.currentScreen === "mode" || STATE.currentScreen === "select" || STATE.currentScreen === "match") {
-    return "lobby";
+  if (
+    STATE.currentScreen === "splash" ||
+    STATE.currentScreen === "mode" ||
+    STATE.currentScreen === "select" ||
+    STATE.currentScreen === "match"
+  ) {
+    return "main";
   }
 
   return null;
