@@ -242,26 +242,50 @@ const VENUES = [
   {
     id: "sports-pitch",
     label: "Sports Pitch",
+    imagePath: "./assets/venues/sports-pitch.jpeg",
     image: loadImage("./assets/venues/sports-pitch.jpeg"),
-    photoFile: "sports-pitch.jpeg",
     focusX: 0.5,
     focusY: 0.5
   },
   {
     id: "indoor-sports-hall",
     label: "Indoor Sports Hall",
+    imagePath: "./assets/venues/indoor-sports-hall.jpeg",
     image: loadImage("./assets/venues/indoor-sports-hall.jpeg"),
-    photoFile: "indoor-sports-hall.jpeg",
     focusX: 0.5,
     focusY: 0.5
   },
   {
     id: "pre-prep-exterior",
     label: "Pre-Prep Exterior",
+    imagePath: "./assets/venues/pre-prep-exterior.jpeg",
     image: loadImage("./assets/venues/pre-prep-exterior.jpeg"),
-    photoFile: "pre-prep-exterior.jpeg",
     focusX: 0.52,
     focusY: 0.48
+  },
+  {
+    id: "front-drive",
+    label: "Front Drive",
+    imagePath: "./assets/rounds/front-drive.jpg",
+    image: loadImage("./assets/rounds/front-drive.jpg"),
+    focusX: 0.56,
+    focusY: 0.48
+  },
+  {
+    id: "manor-lawn",
+    label: "Manor Lawn",
+    imagePath: "./assets/rounds/manor-lawn.jpg",
+    image: loadImage("./assets/rounds/manor-lawn.jpg"),
+    focusX: 0.5,
+    focusY: 0.48
+  },
+  {
+    id: "playing-fields",
+    label: "Playing Fields",
+    imagePath: "./assets/rounds/playing-fields.jpg",
+    image: loadImage("./assets/rounds/playing-fields.jpg"),
+    focusX: 0.5,
+    focusY: 0.45
   }
 ];
 
@@ -677,7 +701,7 @@ function getVenueById(venueId) {
 }
 
 function getVenueImagePath(venue) {
-  return `./assets/venues/${venue.photoFile}`;
+  return venue.imagePath;
 }
 
 function getRoundVenueId(round = STATE.round) {

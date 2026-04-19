@@ -26,7 +26,7 @@ Then visit `http://localhost:8000`.
 - A round-by-round venue picker so each of the three rounds can happen in a different place
 - Three named St Michael's staff fighters with different stats and special abilities
 - A solo AI opponent mode tuned to be more forgiving, two-player local controls, a three-player mode, health bars, blocking, stun, and three one-minute rounds with round scoring
-- Three school-photo venue backdrops, including the sports pitch, indoor sports hall, and pre-prep exterior
+- Six school-photo venue backdrops, including the sports pitch, indoor sports hall, pre-prep exterior, and the official grounds shots
 - Animated splash/menu presentation with looping music tracks in `assets/audio`
 
 ## Controls
