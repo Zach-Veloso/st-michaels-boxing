@@ -209,11 +209,20 @@ const AI_DIFFICULTIES = {
 };
 
 const MATCH_RULES = {
-  totalRounds: 3,
+  defaultRounds: 3,
+  minRounds: 1,
+  maxRounds: 5,
   roundTimeLimit: 60
 };
 
-const DEFAULT_ROUND_VENUES = ["sports-pitch", "indoor-sports-hall", "pre-prep-exterior"];
+const DEFAULT_VENUE_ORDER = [
+  "sports-pitch",
+  "indoor-sports-hall",
+  "pre-prep-exterior",
+  "front-drive",
+  "manor-lawn",
+  "playing-fields"
+];
 
 const STATE = {
   currentScreen: "splash",
@@ -229,8 +238,9 @@ const STATE = {
     player2: 0,
     player3: 0
   },
+  totalRounds: MATCH_RULES.defaultRounds,
   round: 1,
-  roundVenues: [...DEFAULT_ROUND_VENUES],
+  roundVenues: [],
   roundTimeLimit: MATCH_RULES.roundTimeLimit,
   roundTimeElapsed: 0,
   message: "Touch gloves and get ready.",
@@ -305,7 +315,8 @@ const selectionPlayers = document.getElementById("selection-players");
 const venuePanel = document.getElementById("venue-panel");
 const selectSubtitle = document.getElementById("select-subtitle");
 const difficultyPanel = document.getElementById("difficulty-panel");
-const difficultyButtons = [...document.querySelectorAll(".difficulty-button")];
+const difficultyButtons = [...document.querySelectorAll("#difficulty-panel .difficulty-button")];
+const roundCountButtons = [...document.querySelectorAll(".round-count-button")];
 const startMatchButton = document.getElementById("start-match-button");
 const changeModeButton = document.getElementById("change-mode-button");
 const enterButton = document.getElementById("enter-button");
@@ -696,6 +707,14 @@ function formatElapsedTime(seconds) {
   return `${minutes}:${String(remainder).padStart(2, "0")}`;
 }
 
+function clampRoundCount(count) {
+  return Math.max(MATCH_RULES.minRounds, Math.min(MATCH_RULES.maxRounds, count));
+}
+
+function buildDefaultRoundVenues(totalRounds = STATE.totalRounds) {
+  return Array.from({ length: clampRoundCount(totalRounds) }, (_, index) => DEFAULT_VENUE_ORDER[index % DEFAULT_VENUE_ORDER.length]);
+}
+
 function getVenueById(venueId) {
   return VENUES.find((venue) => venue.id === venueId) || VENUES[0];
 }
@@ -705,7 +724,7 @@ function getVenueImagePath(venue) {
 }
 
 function getRoundVenueId(round = STATE.round) {
-  return STATE.roundVenues[Math.max(0, Math.min(MATCH_RULES.totalRounds - 1, round - 1))] || DEFAULT_ROUND_VENUES[0];
+  return STATE.roundVenues[Math.max(0, Math.min(STATE.totalRounds - 1, round - 1))] || DEFAULT_VENUE_ORDER[0];
 }
 
 function getCurrentRoundBackdrop() {
@@ -713,7 +732,7 @@ function getCurrentRoundBackdrop() {
 }
 
 function getRoundLabelText() {
-  return `Round ${STATE.round} of ${MATCH_RULES.totalRounds}`;
+  return `Round ${STATE.round} of ${STATE.totalRounds}`;
 }
 
 function isGameplayKey(key) {
@@ -765,6 +784,12 @@ function updateDifficultyUI() {
   });
 }
 
+function updateRoundCountUI() {
+  roundCountButtons.forEach((button) => {
+    button.classList.toggle("active", Number(button.dataset.roundCount) === STATE.totalRounds);
+  });
+}
+
 function resetSelections() {
   Object.keys(STATE.selections).forEach((slotId) => {
     STATE.selections[slotId] = null;
@@ -778,7 +803,15 @@ function resetWins() {
 }
 
 function resetRoundVenues() {
-  STATE.roundVenues = [...DEFAULT_ROUND_VENUES];
+  STATE.roundVenues = buildDefaultRoundVenues();
+}
+
+function setRoundCount(count) {
+  STATE.totalRounds = clampRoundCount(count);
+  STATE.round = 1;
+  STATE.roundTimeElapsed = 0;
+  resetRoundVenues();
+  updateSelectionUI();
 }
 
 function startSeries() {
@@ -851,7 +884,7 @@ function renderVenuePanel() {
     return;
   }
 
-  const roundCards = Array.from({ length: MATCH_RULES.totalRounds }, (_, index) => {
+  const roundCards = Array.from({ length: STATE.totalRounds }, (_, index) => {
     const roundNumber = index + 1;
     const selectedVenue = getVenueById(getRoundVenueId(roundNumber));
     const buttonsMarkup = VENUES.map((venue) => {
@@ -873,9 +906,6 @@ function renderVenuePanel() {
       <article class="venue-round-card">
         <p class="eyebrow">Round ${roundNumber}</p>
         <h3>${selectedVenue.label}</h3>
-        <div class="venue-preview">
-          <img src="${getVenueImagePath(selectedVenue)}" alt="${selectedVenue.label} preview" />
-        </div>
         <div class="venue-choice-grid">
           ${buttonsMarkup}
         </div>
@@ -889,7 +919,7 @@ function renderVenuePanel() {
         <p class="eyebrow">Choose the Venues</p>
         <h3>Pick where each round happens</h3>
       </div>
-      <p class="venue-panel-copy">Set the order for all three rounds. You can reuse the same place or mix them up.</p>
+      <p class="venue-panel-copy">Set the order for all ${STATE.totalRounds} rounds. You can reuse the same place or mix them up.</p>
     </div>
     <div class="venue-round-grid">
       ${roundCards}
@@ -979,9 +1009,10 @@ function renderControlCards() {
     `;
   }).join("");
 
+  const roundLabelText = `${STATE.totalRounds} one-minute round${STATE.totalRounds === 1 ? "" : "s"}`;
   const rulesText = slotIds.length === 3
-    ? "Three one-minute rounds. Last fighter standing takes the round. If the bell rings, the fighter with the most health takes it."
-    : "Three one-minute rounds. A knockout takes the round instantly. If the bell rings, the fighter with more health takes the round.";
+    ? `${roundLabelText}. Last fighter standing takes the round. If the bell rings, the fighter with the most health takes it.`
+    : `${roundLabelText}. A knockout takes the round instantly. If the bell rings, the fighter with more health takes the round.`;
 
   controlsStrip.innerHTML = `
     ${cards}
@@ -995,6 +1026,7 @@ function renderControlCards() {
 function updateSelectionUI() {
   const slotIds = getRequiredSlotIds();
   updateDifficultyUI();
+  updateRoundCountUI();
   if (!slotIds.length) {
     selectionPlayers.innerHTML = "";
     if (venuePanel) {
@@ -1099,7 +1131,7 @@ function setPlayerCount(count) {
   resetRoundVenues();
   pressedKeys.clear();
   overlay.classList.add("hidden");
-  setMessage("Three one-minute rounds. Touch gloves and get ready.");
+  setMessage(`${STATE.totalRounds} one-minute round${STATE.totalRounds === 1 ? "" : "s"}. Touch gloves and get ready.`);
   renderHudShell();
   updateSelectionUI();
   showScreen("select");
@@ -1107,10 +1139,10 @@ function setPlayerCount(count) {
 
 function getSpawnPositions(count) {
   if (count === 3) {
-    return [100, 596, 1008];
+    return [72, 588, 1000];
   }
 
-  return [290, 902];
+  return [238, 938];
 }
 
 function createFighter(character, slotId, startX) {
@@ -1142,9 +1174,9 @@ function createFighter(character, slotId, startX) {
     aiDecisionVariance: aiProfile ? aiProfile.decisionVariance : 0,
     aiStunMultiplier: aiProfile ? aiProfile.stunMultiplier : 1,
     x: startX,
-    y: 545,
-    width: 88,
-    height: 140,
+    y: 520,
+    width: 104,
+    height: 168,
     vx: 0,
     vy: 0,
     facing: slotId === "player2" ? -1 : 1,
@@ -1201,7 +1233,7 @@ function beginMatch() {
 }
 
 function resetForRematch() {
-  if (STATE.round >= MATCH_RULES.totalRounds) {
+  if (STATE.round >= STATE.totalRounds) {
     startSeries();
     return;
   }
@@ -1680,7 +1712,7 @@ function concludeRound(winner, copy) {
     STATE.wins[winner.slotId] += 1;
   }
 
-  const finalRound = STATE.round >= MATCH_RULES.totalRounds;
+  const finalRound = STATE.round >= STATE.totalRounds;
   if (finalRound) {
     const matchLeaders = getMatchLeaders();
     const matchWinnerSlotId = matchLeaders.length === 1 ? matchLeaders[0] : null;
@@ -1688,13 +1720,13 @@ function concludeRound(winner, copy) {
 
     if (matchWinner) {
       overlayTitle.textContent = `${matchWinner.character.name} wins the match`;
-      overlayCopy.textContent = `${matchWinner.character.name} takes ${STATE.wins[matchWinner.slotId]} of ${MATCH_RULES.totalRounds} rounds across the school grounds.`;
+      overlayCopy.textContent = `${matchWinner.character.name} takes ${STATE.wins[matchWinner.slotId]} of ${STATE.totalRounds} rounds across the school grounds.`;
       setMessage(`${matchWinner.character.name} wins the fight!`);
       playSound("ko");
     } else {
       overlayTitle.textContent = "Match Draw";
-      overlayCopy.textContent = "Three rounds are over, and the judges cannot split the fighters.";
-      setMessage("The match ends level after three rounds.");
+      overlayCopy.textContent = `${STATE.totalRounds} rounds are over, and the judges cannot split the fighters.`;
+      setMessage(`The match ends level after ${STATE.totalRounds} rounds.`);
       playSound("draw");
     }
 
@@ -2226,6 +2258,7 @@ function handleKeyUp(event) {
 }
 
 function init() {
+  resetRoundVenues();
   updateSelectionUI();
   renderHudShell();
   showScreen("splash");
@@ -2257,6 +2290,14 @@ function init() {
       playSound("select");
       STATE.aiDifficulty = button.dataset.difficulty;
       updateSelectionUI();
+    });
+  });
+
+  roundCountButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      void requestAudioUnlock();
+      playSound("select");
+      setRoundCount(Number(button.dataset.roundCount));
     });
   });
 

@@ -442,6 +442,11 @@ button {
   color: #171109;
 }
 
+.round-count-button {
+  min-width: 68px;
+  padding-inline: 0;
+}
+
 .selection-panel,
 .mode-card,
 .tip-card,
@@ -635,22 +640,6 @@ button {
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 55%),
     var(--panel-soft);
   box-shadow: var(--shadow);
-}
-
-.venue-preview {
-  overflow: hidden;
-  margin-top: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 18px;
-  aspect-ratio: 16 / 9;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.venue-preview img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
 }
 
 .venue-choice-grid {
