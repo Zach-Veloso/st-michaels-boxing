@@ -208,6 +208,11 @@ const AI_DIFFICULTIES = {
   }
 };
 
+const MATCH_RULES = {
+  totalRounds: 3,
+  roundTimeLimit: 60
+};
+
 const STATE = {
   currentScreen: "splash",
   playerCount: null,
@@ -223,16 +228,33 @@ const STATE = {
     player3: 0
   },
   round: 1,
-  roundTimeLimit: 180,
+  roundTimeLimit: MATCH_RULES.roundTimeLimit,
   roundTimeElapsed: 0,
   message: "Touch gloves and get ready.",
   inMatch: false,
   resultLocked: false
 };
 
-const PHOTO_BACKDROPS = {
-  schoolExterior: loadImage("./assets/st-michaels-building.jpg")
-};
+const ROUND_BACKDROPS = [
+  {
+    label: "East Wing",
+    image: loadImage("./assets/rounds/front-drive.jpg"),
+    focusX: 0.56,
+    focusY: 0.48
+  },
+  {
+    label: "Manor Lawn",
+    image: loadImage("./assets/rounds/manor-lawn.jpg"),
+    focusX: 0.5,
+    focusY: 0.48
+  },
+  {
+    label: "Playing Fields",
+    image: loadImage("./assets/rounds/playing-fields.jpg"),
+    focusX: 0.5,
+    focusY: 0.45
+  }
+];
 
 const TEACHER_PORTRAITS = Object.fromEntries(
   CHARACTERS.map((character) => [character.id, loadImage(`./assets/teachers/${character.photoFile}`)])
@@ -255,6 +277,7 @@ const changeModeButton = document.getElementById("change-mode-button");
 const enterButton = document.getElementById("enter-button");
 const modeBackButton = document.getElementById("mode-back-button");
 const messageBanner = document.getElementById("message-banner");
+const venueLabel = document.getElementById("venue-label");
 const roundLabel = document.getElementById("round-label");
 const timerLabel = document.getElementById("timer-label");
 const overlay = document.getElementById("match-overlay");
@@ -639,6 +662,14 @@ function formatElapsedTime(seconds) {
   return `${minutes}:${String(remainder).padStart(2, "0")}`;
 }
 
+function getCurrentRoundBackdrop() {
+  return ROUND_BACKDROPS[Math.max(0, Math.min(ROUND_BACKDROPS.length - 1, STATE.round - 1))] || ROUND_BACKDROPS[0];
+}
+
+function getRoundLabelText() {
+  return `Round ${STATE.round} of ${MATCH_RULES.totalRounds}`;
+}
+
 function isGameplayKey(key) {
   return Object.values(KEYS).some((bindings) =>
     Object.values(bindings).some((binding) => binding.includes(key))
@@ -698,6 +729,34 @@ function resetWins() {
   Object.keys(STATE.wins).forEach((slotId) => {
     STATE.wins[slotId] = 0;
   });
+}
+
+function startSeries() {
+  STATE.round = 1;
+  STATE.roundTimeElapsed = 0;
+  resetWins();
+  beginMatch();
+}
+
+function getHealthLeader() {
+  const aliveFighters = fighters.filter(isAliveFighter);
+  if (!aliveFighters.length) {
+    return null;
+  }
+
+  const maxHealth = Math.max(...aliveFighters.map((fighter) => fighter.health));
+  const leaders = aliveFighters.filter((fighter) => fighter.health === maxHealth);
+  return leaders.length === 1 ? leaders[0] : null;
+}
+
+function getMatchLeaders() {
+  const slotIds = getRequiredSlotIds();
+  if (!slotIds.length) {
+    return [];
+  }
+
+  const topScore = Math.max(...slotIds.map((slotId) => STATE.wins[slotId]));
+  return slotIds.filter((slotId) => STATE.wins[slotId] === topScore);
 }
 
 function showScreen(target) {
@@ -810,8 +869,8 @@ function renderControlCards() {
   }).join("");
 
   const rulesText = slotIds.length === 3
-    ? "Last fighter standing wins instantly. If the round clock reaches `3:00`, the match is an automatic draw."
-    : "KO wins instantly. If the round clock reaches `3:00`, the result is an automatic draw.";
+    ? "Three one-minute rounds. Last fighter standing takes the round. If the bell rings, the fighter with the most health takes it."
+    : "Three one-minute rounds. A knockout takes the round instantly. If the bell rings, the fighter with more health takes the round.";
 
   controlsStrip.innerHTML = `
     ${cards}
@@ -856,7 +915,7 @@ function renderHudShell() {
         <div class="meter-fill health"></div>
       </div>
       <p class="meter-label">Special ready</p>
-      <p class="score-label">Wins: 0</p>
+      <p class="score-label">Rounds: 0</p>
     `;
     hudPlayers.appendChild(card);
     hudElements[slotId] = {
@@ -895,11 +954,14 @@ function updateHud() {
           ? "Special ready"
           : `Special in ${fighter.specialCooldown.toFixed(1)}s`
       : "Special ready";
-    elements.score.textContent = `Wins: ${STATE.wins[slotId]}`;
+    elements.score.textContent = `Rounds: ${STATE.wins[slotId]}`;
   });
 
-  roundLabel.textContent = `Round ${STATE.round}`;
-  timerLabel.textContent = `Time ${formatElapsedTime(STATE.roundTimeElapsed)} / 3:00`;
+  if (venueLabel) {
+    venueLabel.textContent = getCurrentRoundBackdrop().label;
+  }
+  roundLabel.textContent = getRoundLabelText();
+  timerLabel.textContent = `Time ${formatElapsedTime(STATE.roundTimeElapsed)} / ${formatElapsedTime(STATE.roundTimeLimit)}`;
   messageBanner.textContent = STATE.message;
 }
 
@@ -912,6 +974,7 @@ function setPlayerCount(count) {
   STATE.playerCount = count;
   STATE.aiDifficulty = count === 1 ? "medium" : null;
   STATE.round = 1;
+  STATE.roundTimeLimit = MATCH_RULES.roundTimeLimit;
   STATE.roundTimeElapsed = 0;
   STATE.inMatch = false;
   STATE.resultLocked = false;
@@ -920,7 +983,7 @@ function setPlayerCount(count) {
   resetWins();
   pressedKeys.clear();
   overlay.classList.add("hidden");
-  setMessage("Touch gloves and get ready.");
+  setMessage("Three one-minute rounds. Touch gloves and get ready.");
   renderHudShell();
   updateSelectionUI();
   showScreen("select");
@@ -998,13 +1061,15 @@ function beginMatch() {
   fighters = slotIds.map((slotId, index) => createFighter(STATE.selections[slotId], slotId, positions[index]));
   STATE.inMatch = true;
   STATE.resultLocked = false;
+  STATE.roundTimeLimit = MATCH_RULES.roundTimeLimit;
   STATE.roundTimeElapsed = 0;
+  const currentBackdrop = getCurrentRoundBackdrop();
   setMessage(
     STATE.playerCount === 1
-      ? "Bell rings. Beat the computer."
+      ? `${currentBackdrop.label}. Bell rings. Beat the computer.`
       : STATE.playerCount === 3
-        ? "Three fighters enter. Only one leaves standing."
-        : "Bell rings. Fight!"
+        ? `${currentBackdrop.label}. Three fighters enter. Win the round.`
+        : `${currentBackdrop.label}. Bell rings. Fight!`
   );
   lastTimestamp = 0;
   renderHudShell();
@@ -1020,13 +1085,19 @@ function beginMatch() {
 }
 
 function resetForRematch() {
+  if (STATE.round >= MATCH_RULES.totalRounds) {
+    startSeries();
+    return;
+  }
+
   STATE.round += 1;
-  roundLabel.textContent = `Round ${STATE.round}`;
   beginMatch();
 }
 
 function backToSelection() {
   STATE.inMatch = false;
+  STATE.round = 1;
+  STATE.roundTimeElapsed = 0;
   fighters = [];
   overlay.classList.add("hidden");
   showScreen("select");
@@ -1484,14 +1555,48 @@ function updateFighters(delta) {
   });
 }
 
-function concludeDraw(copy) {
+function concludeRound(winner, copy) {
   STATE.resultLocked = true;
   STATE.inMatch = false;
   STATE.roundTimeElapsed = STATE.roundTimeLimit;
-  overlayTitle.textContent = "Draw";
-  overlayCopy.textContent = copy;
-  setMessage("Draw! Time is up.");
-  playSound("draw");
+
+  if (winner) {
+    STATE.wins[winner.slotId] += 1;
+  }
+
+  const finalRound = STATE.round >= MATCH_RULES.totalRounds;
+  if (finalRound) {
+    const matchLeaders = getMatchLeaders();
+    const matchWinnerSlotId = matchLeaders.length === 1 ? matchLeaders[0] : null;
+    const matchWinner = matchWinnerSlotId ? fighters.find((fighter) => fighter.slotId === matchWinnerSlotId) : null;
+
+    if (matchWinner) {
+      overlayTitle.textContent = `${matchWinner.character.name} wins the match`;
+      overlayCopy.textContent = `${matchWinner.character.name} takes ${STATE.wins[matchWinner.slotId]} of ${MATCH_RULES.totalRounds} rounds across the school grounds.`;
+      setMessage(`${matchWinner.character.name} wins the fight!`);
+      playSound("ko");
+    } else {
+      overlayTitle.textContent = "Match Draw";
+      overlayCopy.textContent = "Three rounds are over, and the judges cannot split the fighters.";
+      setMessage("The match ends level after three rounds.");
+      playSound("draw");
+    }
+
+    rematchButton.textContent = "Play Again";
+  } else if (winner) {
+    overlayTitle.textContent = `${winner.character.name} takes Round ${STATE.round}`;
+    overlayCopy.textContent = copy;
+    setMessage(`${winner.character.name} wins the round.`);
+    playSound("bell");
+    rematchButton.textContent = "Next Round";
+  } else {
+    overlayTitle.textContent = `Round ${STATE.round} Draw`;
+    overlayCopy.textContent = copy;
+    setMessage(`Round ${STATE.round} ends level.`);
+    playSound("draw");
+    rematchButton.textContent = "Next Round";
+  }
+
   updateHud();
   overlay.classList.remove("hidden");
 }
@@ -1506,23 +1611,19 @@ function checkWinner() {
     return;
   }
 
+  const venue = getCurrentRoundBackdrop().label;
   if (aliveFighters.length === 0) {
-    concludeDraw("Everyone is down when the bell sounds.");
+    concludeRound(null, `Nobody is left standing when the bell echoes around ${venue}.`);
     return;
   }
 
   const winner = aliveFighters[0];
-  STATE.resultLocked = true;
-  STATE.inMatch = false;
-  STATE.wins[winner.slotId] += 1;
-  overlayTitle.textContent = `${winner.character.name} wins by KO`;
-  overlayCopy.textContent = STATE.playerCount === 3
-    ? `${winner.character.name} is the last one left standing in the schoolyard.`
-    : `${winner.character.abilityName} shook the whole schoolyard.`;
-  setMessage(`${winner.character.name} wins!`);
-  playSound("ko");
-  updateHud();
-  overlay.classList.remove("hidden");
+  concludeRound(
+    winner,
+    STATE.playerCount === 3
+      ? `${winner.character.name} is the last fighter standing at ${venue}.`
+      : `${winner.character.name} forces a knockout at ${venue}.`
+  );
 }
 
 function checkDraw() {
@@ -1531,11 +1632,17 @@ function checkDraw() {
   }
 
   if (STATE.roundTimeElapsed >= STATE.roundTimeLimit) {
-    concludeDraw(
-      STATE.playerCount === 3
-        ? "Three minutes are up. The remaining fighters survive the bell."
-        : "Three minutes are up. The bell saves both fighters."
-    );
+    const venue = getCurrentRoundBackdrop().label;
+    const leader = getHealthLeader();
+    if (leader) {
+      concludeRound(
+        leader,
+        `${leader.character.name} leads on health when the bell rings at ${venue}.`
+      );
+      return;
+    }
+
+    concludeRound(null, `The bell rings at ${venue}, but the judges cannot split the round.`);
   }
 }
 
@@ -1555,8 +1662,8 @@ function drawSky() {
 }
 
 function drawSchoolBackdrop() {
-  const focusX = STATE.round % 2 === 1 ? 0.24 : 0.68;
-  const hasBackdrop = drawCoverImage(PHOTO_BACKDROPS.schoolExterior, 0, 0, canvas.width, canvas.height, focusX, 0.5);
+  const backdrop = getCurrentRoundBackdrop();
+  const hasBackdrop = drawCoverImage(backdrop.image, 0, 0, canvas.width, canvas.height, backdrop.focusX, backdrop.focusY);
 
   if (!hasBackdrop) {
     drawSky();
@@ -2045,7 +2152,7 @@ function init() {
 
   startMatchButton.addEventListener("click", () => {
     void requestAudioUnlock();
-    beginMatch();
+    startSeries();
   });
 
   rematchButton.addEventListener("click", () => {
