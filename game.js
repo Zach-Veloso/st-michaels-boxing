@@ -215,6 +215,8 @@ const MATCH_RULES = {
   roundTimeLimit: 60
 };
 
+const FIGHTER_RENDER_SCALE = 1.18;
+
 const DEFAULT_VENUE_ORDER = [
   "sports-pitch",
   "indoor-sports-hall",
@@ -1978,6 +1980,7 @@ function drawFighter(fighter) {
   const bob = fighter.onGround ? Math.sin(STATE.roundTimeElapsed * 6 + fighter.x * 0.03) * 1.5 : 0;
   const centerX = fighter.x + fighter.width / 2;
   const baseY = fighter.y + bob;
+  const anchorY = fighter.y + fighter.height + 6;
   const attackLean = fighter.currentAttack ? fighter.facing * 7 : 0;
   const headX = centerX + attackLean;
   const headY = baseY + 23;
@@ -2018,6 +2021,10 @@ function drawFighter(fighter) {
   if (!isAliveFighter(fighter)) {
     ctx.globalAlpha = 0.38;
   }
+
+  ctx.translate(centerX, anchorY);
+  ctx.scale(FIGHTER_RENDER_SCALE, FIGHTER_RENDER_SCALE);
+  ctx.translate(-centerX, -anchorY);
 
   if (fighter.afterImage > 0) {
     ctx.globalAlpha = isAliveFighter(fighter) ? 0.16 : 0.1;
@@ -2184,7 +2191,15 @@ function drawArena() {
   ctx.fillStyle = "rgba(8, 12, 20, 0.18)";
   fighters.forEach((fighter) => {
     ctx.beginPath();
-    ctx.ellipse(fighter.x + fighter.width / 2, 690, 70, 20, 0, 0, Math.PI * 2);
+    ctx.ellipse(
+      fighter.x + fighter.width / 2,
+      690,
+      70 * FIGHTER_RENDER_SCALE,
+      20 * FIGHTER_RENDER_SCALE,
+      0,
+      0,
+      Math.PI * 2
+    );
     ctx.fill();
   });
 
