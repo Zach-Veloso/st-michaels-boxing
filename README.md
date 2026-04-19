@@ -24,9 +24,9 @@ Then visit `http://localhost:8000`.
 - A player-count screen with `1 player`, `2 players`, or `3 players`
 - Character select that adapts for solo AI, local versus, or a three-way fight
 - Three named St Michael's staff fighters with different stats and special abilities
-- A solo AI opponent mode, two-player local controls, a three-player mode, health bars, blocking, stun, KO, rematch flow, a 3-minute draw rule, and win tracking
+- A solo AI opponent mode tuned to be more forgiving, two-player local controls, a three-player mode, health bars, blocking, stun, KO, rematch flow, a 3-minute draw rule, and win tracking
 - School-photo arena backdrop with a softer, less pixel-heavy visual style
-- Built-in splash music and menu music generated in the browser
+- Animated splash/menu presentation with looping music tracks in `assets/audio`
 
 ## Controls
 

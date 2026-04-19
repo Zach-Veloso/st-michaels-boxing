@@ -202,49 +202,13 @@ const AUDIO = {
   ctx: null,
   master: null,
   enabled: true,
-  themeTimer: null,
-  themeToken: 0,
-  unlocked: false
+  unlocked: false,
+  currentTrack: null
 };
 
-const AUDIO_THEMES = {
-  splash: {
-    loopMs: 3920,
-    notes: [
-      { frequency: 261.63, duration: 0.42, delay: 0.08, gain: 0.035, type: "triangle", release: 0.18, pan: -0.1 },
-      { frequency: 329.63, duration: 0.32, delay: 0.48, gain: 0.028, type: "triangle", release: 0.16, pan: 0.08 },
-      { frequency: 392, duration: 0.4, delay: 0.86, gain: 0.038, type: "triangle", release: 0.18, pan: 0.12 },
-      { frequency: 523.25, duration: 0.48, delay: 1.34, gain: 0.034, type: "triangle", release: 0.2, pan: 0.04 },
-      { frequency: 392, duration: 0.32, delay: 2.02, gain: 0.03, type: "triangle", release: 0.16, pan: -0.05 },
-      { frequency: 329.63, duration: 0.38, delay: 2.44, gain: 0.028, type: "triangle", release: 0.16, pan: -0.12 },
-      { frequency: 261.63, duration: 0.54, delay: 2.9, gain: 0.04, type: "triangle", release: 0.22, pan: 0 }
-    ],
-    bass: [
-      { frequency: 130.81, duration: 0.58, delay: 0.1, gain: 0.026, type: "sine", release: 0.2, pan: -0.08 },
-      { frequency: 164.81, duration: 0.54, delay: 1.34, gain: 0.024, type: "sine", release: 0.2, pan: 0.06 },
-      { frequency: 130.81, duration: 0.66, delay: 2.9, gain: 0.026, type: "sine", release: 0.2, pan: 0.02 }
-    ]
-  },
-  lobby: {
-    loopMs: 3180,
-    notes: [
-      { frequency: 349.23, duration: 0.16, delay: 0.08, gain: 0.03, type: "triangle", release: 0.12, pan: -0.12 },
-      { frequency: 440, duration: 0.14, delay: 0.34, gain: 0.03, type: "triangle", release: 0.12, pan: 0.12 },
-      { frequency: 523.25, duration: 0.17, delay: 0.58, gain: 0.032, type: "triangle", release: 0.12, pan: -0.08 },
-      { frequency: 587.33, duration: 0.16, delay: 0.84, gain: 0.034, type: "triangle", release: 0.12, pan: 0.1 },
-      { frequency: 523.25, duration: 0.16, delay: 1.12, gain: 0.03, type: "triangle", release: 0.12, pan: -0.04 },
-      { frequency: 440, duration: 0.16, delay: 1.38, gain: 0.03, type: "triangle", release: 0.12, pan: 0.14 },
-      { frequency: 392, duration: 0.18, delay: 1.7, gain: 0.03, type: "triangle", release: 0.12, pan: -0.1 },
-      { frequency: 523.25, duration: 0.2, delay: 2.02, gain: 0.034, type: "triangle", release: 0.14, pan: 0.08 },
-      { frequency: 659.25, duration: 0.22, delay: 2.36, gain: 0.036, type: "triangle", release: 0.14, pan: 0.02 }
-    ],
-    bass: [
-      { frequency: 174.61, duration: 0.34, delay: 0.08, gain: 0.02, type: "sine", release: 0.16, pan: -0.04 },
-      { frequency: 196, duration: 0.32, delay: 0.84, gain: 0.02, type: "sine", release: 0.16, pan: 0.04 },
-      { frequency: 164.81, duration: 0.34, delay: 1.7, gain: 0.02, type: "sine", release: 0.16, pan: -0.06 },
-      { frequency: 196, duration: 0.4, delay: 2.36, gain: 0.022, type: "sine", release: 0.18, pan: 0.04 }
-    ]
-  }
+const MUSIC_TRACKS = {
+  splash: createMusicTrack("./assets/audio/title-theme.wav", 0.66),
+  lobby: createMusicTrack("./assets/audio/menu-theme.wav", 0.62)
 };
 
 function updateSoundToggleUI() {
@@ -330,13 +294,14 @@ function getThemeForCurrentScreen() {
   return null;
 }
 
-function stopTheme() {
-  AUDIO.themeToken += 1;
-
-  if (AUDIO.themeTimer) {
-    window.clearTimeout(AUDIO.themeTimer);
-    AUDIO.themeTimer = null;
-  }
+function stopTheme(resetPosition = true) {
+  Object.values(MUSIC_TRACKS).forEach((track) => {
+    track.pause();
+    if (resetPosition) {
+      track.currentTime = 0;
+    }
+  });
+  AUDIO.currentTrack = null;
 }
 
 async function requestAudioUnlock() {
@@ -344,13 +309,12 @@ async function requestAudioUnlock() {
     return;
   }
 
-  const wasReady = Boolean(AUDIO.unlocked && AUDIO.ctx && AUDIO.ctx.state === "running");
   const ctxInstance = await unlockAudioFromGesture();
   if (!ctxInstance) {
     return;
   }
 
-  if (getThemeForCurrentScreen() && (!wasReady || AUDIO.themeTimer === null)) {
+  if (getThemeForCurrentScreen()) {
     syncScreenAudio();
   }
 }
@@ -401,42 +365,40 @@ function playTone({
   osc.stop(startAt + duration + release + 0.04);
 }
 
-function playTheme(themeName, loopToken) {
-  if (!AUDIO.enabled || getThemeForCurrentScreen() !== themeName || AUDIO.themeToken !== loopToken) {
+function createMusicTrack(src, volume) {
+  const track = new Audio(src);
+  track.loop = true;
+  track.preload = "auto";
+  track.volume = volume;
+  return track;
+}
+
+function playTheme(themeName) {
+  const track = MUSIC_TRACKS[themeName];
+  if (!track || !AUDIO.enabled) {
     return;
   }
 
-  const theme = AUDIO_THEMES[themeName];
-  if (!theme) {
-    return;
-  }
-
-  theme.notes.forEach((note) => {
-    playTone(note);
-  });
-
-  theme.bass.forEach((note) => {
-    playTone(note);
-  });
-
-  AUDIO.themeTimer = window.setTimeout(() => {
-    if (AUDIO.themeToken !== loopToken) {
+  Object.entries(MUSIC_TRACKS).forEach(([name, otherTrack]) => {
+    if (name === themeName) {
       return;
     }
-    playTheme(themeName, loopToken);
-  }, theme.loopMs);
+    otherTrack.pause();
+    otherTrack.currentTime = 0;
+  });
+
+  if (AUDIO.currentTrack !== themeName) {
+    track.currentTime = 0;
+  }
+
+  AUDIO.currentTrack = themeName;
+  track.play().catch(() => {});
 }
 
 function syncScreenAudio() {
   const themeName = getThemeForCurrentScreen();
   if (themeName && AUDIO.enabled) {
-    const ctxInstance = ensureAudio();
-    if (!ctxInstance) {
-      return;
-    }
-
-    stopTheme();
-    playTheme(themeName, AUDIO.themeToken);
+    playTheme(themeName);
     return;
   }
 
@@ -881,6 +843,9 @@ function createFighter(character, slotId, startX) {
     character,
     slotId,
     isAI: isAISlot(slotId),
+    aiMoveMultiplier: isAISlot(slotId) ? 0.9 : 1,
+    aiDamageMultiplier: isAISlot(slotId) ? 0.74 : 1,
+    aiReceivedDamageMultiplier: isAISlot(slotId) ? 1.24 : 1,
     x: startX,
     y: 545,
     width: 88,
@@ -1036,27 +1001,27 @@ function getAIInputState(fighter, delta) {
 
   const diff = getFighterCenter(target) - getFighterCenter(fighter);
   const distance = Math.abs(diff);
-  const lowHealth = fighter.health < fighter.character.maxHealth * 0.28;
-  const underPressure = target.currentAttack && distance < target.currentAttack.range + 48 && target.attackTimer <= target.currentAttack.duration * 0.72;
+  const lowHealth = fighter.health < fighter.character.maxHealth * 0.34;
+  const underPressure = target.currentAttack && distance < target.currentAttack.range + 36 && target.attackTimer <= target.currentAttack.duration * 0.64;
 
-  if (underPressure && Math.random() < 0.82) {
+  if (underPressure && Math.random() < 0.52) {
     input.block = true;
   }
 
   if (fighter.attackTimer <= 0 && fighter.stunTimer <= 0) {
-    if (lowHealth && distance < 140) {
+    if (lowHealth && distance < 170) {
       if (diff < 0) {
         input.right = true;
       } else {
         input.left = true;
       }
-    } else if (distance > 155) {
+    } else if (distance > 176) {
       if (diff < 0) {
         input.left = true;
       } else {
         input.right = true;
       }
-    } else if (distance < 82 && Math.random() < 0.22) {
+    } else if (distance < 74 && Math.random() < 0.14) {
       if (diff < 0) {
         input.right = true;
       } else {
@@ -1065,25 +1030,25 @@ function getAIInputState(fighter, delta) {
     }
   }
 
-  if (fighter.onGround && fighter.aiJumpCooldown <= 0 && !input.block && distance > 100 && !target.onGround && Math.random() < 0.18) {
+  if (fighter.onGround && fighter.aiJumpCooldown <= 0 && !input.block && distance > 112 && !target.onGround && Math.random() < 0.09) {
     input.jump = true;
-    fighter.aiJumpCooldown = 0.85;
+    fighter.aiJumpCooldown = 1.15;
   }
 
   if (fighter.aiDecisionTimer <= 0 && fighter.attackCooldown <= 0 && fighter.stunTimer <= 0 && !input.block) {
-    if (distance <= 128) {
+    if (distance <= 118) {
       const roll = Math.random();
-      if (fighter.specialCooldown <= 0 && roll > 0.78) {
+      if (fighter.specialCooldown <= 0 && roll > 0.9) {
         attemptAttack(fighter, "special");
-      } else if (roll > 0.46) {
+      } else if (roll > 0.64) {
         attemptAttack(fighter, "hook");
-      } else {
+      } else if (roll > 0.24) {
         attemptAttack(fighter, "jab");
       }
-      fighter.aiDecisionTimer = 0.2 + Math.random() * 0.18;
-    } else if (distance <= 176 && fighter.specialCooldown <= 0 && Math.random() < 0.34) {
+      fighter.aiDecisionTimer = 0.42 + Math.random() * 0.26;
+    } else if (distance <= 168 && fighter.specialCooldown <= 0 && Math.random() < 0.14) {
       attemptAttack(fighter, "special");
-      fighter.aiDecisionTimer = 0.3 + Math.random() * 0.18;
+      fighter.aiDecisionTimer = 0.52 + Math.random() * 0.2;
     }
   }
 
@@ -1111,7 +1076,7 @@ function handleInputs(delta) {
     const moveLeft = input.left;
     const moveRight = input.right;
     const speedMultiplier = fighter.speedBuffTimer > 0 ? 1.35 : 1;
-    const targetSpeed = fighter.character.speed * speedMultiplier;
+    const targetSpeed = fighter.character.speed * speedMultiplier * fighter.aiMoveMultiplier;
 
     if (fighter.attackTimer <= 0) {
       if (moveLeft && !moveRight) {
@@ -1238,6 +1203,15 @@ function tryHit(attacker, defender) {
   const push = attacker.currentAttack.push;
   let stun = attacker.currentAttack.stun;
   const defenderWasAlive = defender.health > 0;
+
+  if (attacker.isAI) {
+    damage *= attacker.aiDamageMultiplier;
+    stun *= 0.82;
+  }
+
+  if (defender.isAI) {
+    damage *= defender.aiReceivedDamageMultiplier;
+  }
 
   if (defender.isBlocking) {
     damage *= 1 - defender.blockReduction;

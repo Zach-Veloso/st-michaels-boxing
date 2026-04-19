@@ -142,6 +142,14 @@ button {
   z-index: 1;
 }
 
+.screen-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 #splash-screen::before,
 #mode-screen::before,
 #select-screen::before {
@@ -192,6 +200,118 @@ button {
   backdrop-filter: blur(12px);
 }
 
+.splash-atmosphere .light-beam,
+.splash-atmosphere .spark,
+.mode-atmosphere .mode-ring,
+.mode-atmosphere .mode-orb {
+  position: absolute;
+  display: block;
+}
+
+.splash-atmosphere .light-beam {
+  top: -12%;
+  width: 30vw;
+  min-width: 220px;
+  height: 140%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(100, 215, 255, 0.04) 28%, transparent 72%);
+  filter: blur(10px);
+  opacity: 0.45;
+  transform-origin: top center;
+}
+
+.splash-atmosphere .beam-left {
+  left: 12%;
+  transform: rotate(14deg);
+  animation: beamSweepLeft 8s ease-in-out infinite alternate;
+}
+
+.splash-atmosphere .beam-right {
+  right: 10%;
+  transform: rotate(-16deg);
+  animation: beamSweepRight 9s ease-in-out infinite alternate;
+}
+
+.splash-atmosphere .spark {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 248, 210, 0.95), rgba(242, 193, 78, 0.1) 62%, transparent 70%);
+  box-shadow: 0 0 20px rgba(242, 193, 78, 0.38);
+}
+
+.spark-one {
+  top: 22%;
+  left: 18%;
+  animation: sparkFloat 6s ease-in-out infinite;
+}
+
+.spark-two {
+  top: 31%;
+  right: 18%;
+  animation: sparkFloat 7.2s ease-in-out infinite -1.8s;
+}
+
+.spark-three {
+  top: 64%;
+  left: 72%;
+  animation: sparkFloat 5.6s ease-in-out infinite -0.9s;
+}
+
+.mode-atmosphere .mode-ring {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  filter: blur(0.2px);
+}
+
+.mode-atmosphere .ring-one {
+  width: 380px;
+  height: 380px;
+  top: 8%;
+  left: -6%;
+  animation: slowSpin 18s linear infinite;
+}
+
+.mode-atmosphere .ring-two {
+  width: 240px;
+  height: 240px;
+  right: 9%;
+  top: 14%;
+  animation: slowSpinReverse 13s linear infinite;
+}
+
+.mode-atmosphere .ring-three {
+  width: 560px;
+  height: 560px;
+  right: -12%;
+  bottom: -26%;
+  border-color: rgba(100, 215, 255, 0.12);
+  animation: slowSpin 26s linear infinite;
+}
+
+.mode-atmosphere .mode-orb {
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(100, 215, 255, 0.34), transparent 68%);
+  filter: blur(2px);
+  opacity: 0.8;
+}
+
+.mode-atmosphere .orb-one {
+  width: 240px;
+  height: 240px;
+  left: 12%;
+  bottom: 4%;
+  animation: orbDrift 8.4s ease-in-out infinite;
+}
+
+.mode-atmosphere .orb-two {
+  width: 180px;
+  height: 180px;
+  right: 16%;
+  bottom: 16%;
+  background: radial-gradient(circle, rgba(242, 193, 78, 0.26), transparent 70%);
+  animation: orbDrift 6.8s ease-in-out infinite -2s;
+}
+
 .badge {
   width: min(260px, 62vw);
   height: auto;
@@ -204,11 +324,24 @@ button {
   font-size: clamp(1rem, 2vw, 1.35rem);
 }
 
-.splash-card h3 {
+.splash-title {
   margin-top: 8px;
   font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 0.95;
+}
+
+.splash-title span {
+  display: block;
   color: var(--gold);
   text-shadow: 0 0 18px rgba(242, 193, 78, 0.18);
+}
+
+.title-tag {
+  margin: 14px 0 0;
+  color: rgba(248, 244, 232, 0.9);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
 }
 
 .splash-copy {
@@ -337,6 +470,69 @@ button {
 .mode-button:hover {
   transform: translateY(-2px);
   filter: brightness(1.05);
+}
+
+#splash-screen.active .splash-card {
+  animation: revealCard 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both, gentleFloat 7s ease-in-out infinite 0.8s;
+}
+
+#splash-screen.active .badge {
+  animation: badgeBob 4.8s ease-in-out infinite;
+}
+
+#splash-screen.active .splash-title span:first-child {
+  animation: titleRiseLeft 740ms cubic-bezier(0.2, 0.8, 0.2, 1) both 120ms, titleGlow 4.2s ease-in-out infinite 1.1s;
+}
+
+#splash-screen.active .splash-title span:last-child {
+  animation: titleRiseRight 760ms cubic-bezier(0.2, 0.8, 0.2, 1) both 210ms, titleGlow 4.2s ease-in-out infinite 1.35s;
+}
+
+#splash-screen.active .title-tag,
+#splash-screen.active .splash-copy,
+#splash-screen.active #enter-button {
+  animation: fadeUp 640ms ease both;
+}
+
+#splash-screen.active .title-tag {
+  animation-delay: 320ms;
+}
+
+#splash-screen.active .splash-copy {
+  animation-delay: 420ms;
+}
+
+#splash-screen.active #enter-button {
+  animation-delay: 520ms, 1.2s;
+  animation-name: fadeUp, buttonPulse;
+  animation-duration: 640ms, 3.2s;
+  animation-iteration-count: 1, infinite;
+  animation-fill-mode: both, none;
+}
+
+#mode-screen.active .mode-card {
+  animation: revealCard 680ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+#mode-screen.active .mode-button {
+  animation: modeButtonIn 620ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+#mode-screen.active .mode-button:nth-child(1) {
+  animation-delay: 90ms;
+}
+
+#mode-screen.active .mode-button:nth-child(2) {
+  animation-delay: 180ms;
+}
+
+#mode-screen.active .mode-button:nth-child(3) {
+  animation-delay: 270ms;
+}
+
+#select-screen.active .selection-panel,
+#select-screen.active .fighter-card {
+  animation: fadeUpSoft 520ms ease both;
 }
 
 .selection-players {
@@ -635,6 +831,170 @@ button {
   line-height: 1.45;
 }
 
+@keyframes revealCard {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes gentleFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes badgeBob {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1.5deg);
+  }
+}
+
+@keyframes titleRiseLeft {
+  from {
+    opacity: 0;
+    transform: translate(-22px, 16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes titleRiseRight {
+  from {
+    opacity: 0;
+    transform: translate(22px, 16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes titleGlow {
+  0%, 100% {
+    text-shadow: 0 0 18px rgba(242, 193, 78, 0.18);
+  }
+  50% {
+    text-shadow: 0 0 28px rgba(242, 193, 78, 0.45), 0 0 48px rgba(100, 215, 255, 0.18);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeUpSoft {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes buttonPulse {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 0 0 rgba(242, 193, 78, 0);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 0 24px rgba(242, 193, 78, 0.2);
+  }
+}
+
+@keyframes beamSweepLeft {
+  0% {
+    transform: rotate(11deg) translateY(-8px);
+    opacity: 0.28;
+  }
+  100% {
+    transform: rotate(17deg) translateY(12px);
+    opacity: 0.5;
+  }
+}
+
+@keyframes beamSweepRight {
+  0% {
+    transform: rotate(-19deg) translateY(10px);
+    opacity: 0.26;
+  }
+  100% {
+    transform: rotate(-11deg) translateY(-12px);
+    opacity: 0.48;
+  }
+}
+
+@keyframes sparkFloat {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-18px) scale(1.2);
+    opacity: 1;
+  }
+}
+
+@keyframes slowSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slowSpinReverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes orbDrift {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(22px, -16px, 0) scale(1.08);
+  }
+}
+
+@keyframes modeButtonIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 1120px) {
   .roster-grid,
   .bottom-strip,
@@ -649,6 +1009,11 @@ button {
   .app-shell {
     width: min(100vw - 16px, 1440px);
     padding-top: 10px;
+  }
+
+  .mode-card {
+    margin: 50px 12px;
+    padding: 24px;
   }
 
   .banner-row {
