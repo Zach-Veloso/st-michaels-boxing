@@ -507,7 +507,7 @@ async function toggleSound() {
   updateSoundToggleUI();
 
   if (AUDIO.enabled) {
-    await unlockAudioFromGesture();
+    void unlockAudioFromGesture();
     playSound("select");
   }
 
@@ -729,8 +729,8 @@ function renderRoster() {
   wirePortraitFrames(roster);
 
   roster.querySelectorAll(".picker-button").forEach((button) => {
-    button.addEventListener("click", async () => {
-      await requestAudioUnlock();
+    button.addEventListener("click", () => {
+      void requestAudioUnlock();
       playSound("select");
       const slotId = button.dataset.player;
       const character = CHARACTERS.find((entry) => entry.id === button.dataset.character);
@@ -1908,44 +1908,44 @@ function init() {
   showScreen("splash");
   updateSoundToggleUI();
 
-  enterButton.addEventListener("click", async () => {
-    await requestAudioUnlock();
+  enterButton.addEventListener("click", () => {
+    void requestAudioUnlock();
     playSound("menu-open");
     showScreen("mode");
   });
 
-  modeBackButton.addEventListener("click", async () => {
-    await requestAudioUnlock();
+  modeBackButton.addEventListener("click", () => {
+    void requestAudioUnlock();
     playSound("back");
     showScreen("splash");
   });
 
   modeButtons.forEach((button) => {
-    button.addEventListener("click", async () => {
-      await requestAudioUnlock();
+    button.addEventListener("click", () => {
+      void requestAudioUnlock();
       playSound("select");
       setPlayerCount(Number(button.dataset.playerCount));
     });
   });
 
-  changeModeButton.addEventListener("click", async () => {
-    await requestAudioUnlock();
+  changeModeButton.addEventListener("click", () => {
+    void requestAudioUnlock();
     playSound("back");
     showScreen("mode");
   });
 
-  startMatchButton.addEventListener("click", async () => {
-    await requestAudioUnlock();
+  startMatchButton.addEventListener("click", () => {
+    void requestAudioUnlock();
     beginMatch();
   });
 
-  rematchButton.addEventListener("click", async () => {
-    await requestAudioUnlock();
+  rematchButton.addEventListener("click", () => {
+    void requestAudioUnlock();
     resetForRematch();
   });
 
-  backButton.addEventListener("click", async () => {
-    await requestAudioUnlock();
+  backButton.addEventListener("click", () => {
+    void requestAudioUnlock();
     backToSelection();
   });
 
